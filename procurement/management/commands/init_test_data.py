@@ -1,6 +1,5 @@
-from datetime import timedelta
+﻿from datetime import timedelta
 from decimal import Decimal
-import os
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -33,93 +32,55 @@ class Command(BaseCommand):
         if updated_fields:
             user.save(update_fields=updated_fields)
 
-        if created:
-            user.set_password(password)
-            user.save(update_fields=['password'])
+        # Всегда синхронизируем пароль, чтобы вход был предсказуемым в любом окружении.
+        user.set_password(password)
+        user.save(update_fields=['password'])
 
         return user, created
 
     @transaction.atomic
     def handle(self, *args, **kwargs):
-        password = os.environ.get('TEST_USERS_PASSWORD', 'Test12345!')
-        sync_password = os.environ.get('SYNC_TEST_USERS_PASSWORD', 'True').lower() in ('1', 'true', 'yes', 'on')
-
         users_to_create = [
             {
-                'username': 'admin_test',
+                'username': 'manager',
+                'password': 'manager123',
                 'role_flags': {
                     'is_superuser': True,
                     'is_staff': True,
-                    'is_manager': False,
-                    'is_supply_employee': False,
-                },
-                'profile': {
-                    'first_name': 'Системный',
-                    'last_name': 'Администратор',
-                    'email': 'admin_test@example.com',
-                    'position': 'Администратор системы',
-                },
-            },
-            {
-                'username': 'staff_test',
-                'role_flags': {
-                    'is_superuser': False,
-                    'is_staff': True,
-                    'is_manager': False,
-                    'is_supply_employee': False,
-                },
-                'profile': {
-                    'first_name': 'Офисный',
-                    'last_name': 'Сотрудник',
-                    'email': 'staff_test@example.com',
-                    'position': 'Персонал',
-                },
-            },
-            {
-                'username': 'manager_test',
-                'role_flags': {
-                    'is_superuser': False,
-                    'is_staff': False,
                     'is_manager': True,
                     'is_supply_employee': False,
                 },
                 'profile': {
-                    'first_name': 'Руководитель',
-                    'last_name': 'Тестовый',
-                    'email': 'manager_test@example.com',
-                    'position': 'Руководитель отдела',
+                    'first_name': 'Главный',
+                    'last_name': 'Менеджер',
+                    'email': 'manager@example.com',
+                    'position': 'Менеджер',
                 },
             },
             {
-                'username': 'supply_test',
+                'username': 'speciolist',
+                'password': 'speciolist123',
                 'role_flags': {
                     'is_superuser': False,
                     'is_staff': False,
-                    'is_manager': False,
+                    'is_manager': True,
                     'is_supply_employee': True,
                 },
                 'profile': {
-                    'first_name': 'Снабжение',
-                    'last_name': 'Тестовый',
-                    'email': 'supply_test@example.com',
-                    'position': 'Специалист снабжения',
+                    'first_name': 'Специалист',
+                    'last_name': 'Снабжения',
+                    'email': 'speciolist@example.com',
+                    'position': 'Специалист',
                 },
             },
-            {
-                'username': 'employee_test',
-                'role_flags': {
-                    'is_superuser': False,
-                    'is_staff': False,
-                    'is_manager': False,
-                    'is_supply_employee': False,
-                },
-                'profile': {
-                    'first_name': 'Пользователь',
-                    'last_name': 'Тестовый',
-                    'email': 'employee_test@example.com',
-                    'position': 'Инициатор заявок',
-                },
-            },
+        ]
+
+        legacy_test_usernames = [
+            'admin_test',
+            'staff_test',
+            'manager_test',
+            'supply_test',
+            'employee_test',
         ]
 
         users = {}
@@ -128,7 +89,7 @@ class Command(BaseCommand):
         for item in users_to_create:
             user, created = self._ensure_user(
                 username=item['username'],
-                password=password,
+                password=item['password'],
                 role_flags=item['role_flags'],
                 profile_defaults=item['profile'],
             )
@@ -138,10 +99,9 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS(f'Создан пользователь: {user.username}'))
             else:
                 self.stdout.write(self.style.WARNING(f'Пользователь уже существует: {user.username}'))
-                if sync_password:
-                    user.set_password(password)
-                    user.save(update_fields=['password'])
-                    self.stdout.write(self.style.SUCCESS(f'Пароль синхронизирован: {user.username}'))
+            self.stdout.write(self.style.SUCCESS(f'Пароль синхронизирован: {user.username}'))
+
+        removed_legacy_count = User.objects.filter(username__in=legacy_test_usernames).delete()[0]
 
         materials_data = [
             ('[TEST] Бентонитовый раствор', 'м³', 'Тестовый материал для демо-заявок'),
@@ -174,13 +134,13 @@ class Command(BaseCommand):
                 'email': 'supplier_test@example.com',
                 'status': 'active',
                 'contact_person': 'Иванов Иван',
-                'created_by': users['manager_test'],
+                'created_by': users['manager'],
             },
         )
 
         current_plan_type = PurchaseRequest.PLAN_CHOICES[0][0]
         purchase_request, request_created = PurchaseRequest.objects.get_or_create(
-            requester=users['employee_test'],
+            requester=users['speciolist'],
             nomenclature=materials['[TEST] Бентонитовый раствор'],
             description='[TEST] Демонстрационная заявка на закупку',
             defaults={
@@ -190,19 +150,19 @@ class Command(BaseCommand):
                 'plan_type': current_plan_type,
                 'status': 'pending',
                 'budget_article': 'opex',
-                'approver': users['manager_test'],
+                'approver': users['manager'],
             },
         )
 
         task, task_created = Task.objects.get_or_create(
             title='[TEST] Согласование демо-заявки',
-            executor=users['manager_test'],
+            executor=users['manager'],
             task_type='approval',
             related_request=purchase_request,
             defaults={
                 'description': 'Проверьте и согласуйте тестовую заявку на закупку.',
                 'state': 'active',
-                'created_by': users['employee_test'],
+                'created_by': users['speciolist'],
             },
         )
 
@@ -214,11 +174,11 @@ class Command(BaseCommand):
                 'contract_amount': Decimal('500000.00'),
                 'contract_date': today,
                 'end_date': today + timedelta(days=365),
-                'responsible': users['supply_test'],
+                'responsible': users['speciolist'],
                 'status': 'pending',
                 'comment': 'Тестовый договор для демонстрации workflow',
-                'approver': users['staff_test'],
-                'created_by': users['manager_test'],
+                'approver': users['manager'],
+                'created_by': users['manager'],
             },
         )
 
@@ -227,6 +187,7 @@ class Command(BaseCommand):
         self.stdout.write(
             f'Пользователи: создано {users_created_count}, уже существовали {len(users_to_create) - users_created_count}'
         )
+        self.stdout.write(f'Удалено устаревших тестовых пользователей: {removed_legacy_count}')
         self.stdout.write(
             f'Материалы: создано {materials_created_count}, уже существовали {len(materials_data) - materials_created_count}'
         )
@@ -242,6 +203,4 @@ class Command(BaseCommand):
         self.stdout.write(
             f"Договор: {'создан' if contract_created else 'уже существует'}"
         )
-        if sync_password:
-            self.stdout.write('Пароль тестовых аккаунтов синхронизируется на каждом запуске.')
-        self.stdout.write('Пароль берется из TEST_USERS_PASSWORD (по умолчанию Test12345!).')
+        self.stdout.write('Тестовые аккаунты: manager / manager123 и speciolist / speciolist123.')
