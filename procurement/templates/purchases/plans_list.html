@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Главная</a></li>
+                    <li class="breadcrumb-item"><a href="#">Закупки</a></li>
+                    <li class="breadcrumb-item active">Планы закупок</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="page-title">Планы закупок</h2>
+                <span class="badge bg-tatneft-green text-white">Всего планов: {{ total_plans }}</span>
+            </div>
+            <p class="text-muted">Управление планами закупок материально-технических ресурсов</p>
+        </div>
+    </div>
+
+    <div class="card plans-card">
+        <div class="card-header tatneft-header-green d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 text-white"><i class="bi bi-calendar-check"></i> Реестр планов закупок</h5>
+            <span class="badge bg-white text-tatneft-green">Татнефтеснаб</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 plans-table align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="border-0" style="width: 5%;">№</th>
+                            <th class="border-0" style="width: 30%;">Наименование плана</th>
+                            <th class="border-0" style="width: 10%;">Год</th>
+                            <th class="border-0" style="width: 25%;">Ответственный</th>
+                            <th class="border-0" style="width: 15%;">Статус</th>
+                            <th class="border-0" style="width: 15%;">Заявок в плане</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for plan in plans %}
+                        <tr class="plan-row" data-plan-url="{% url 'purchase_plan_detail' plan.id %}" style="cursor: pointer;" title="Двойной клик для открытия">
+                            <td class="align-middle">{{ forloop.counter }}</td>
+                            <td class="align-middle">
+                                <strong class="text-tatneft-green">{{ plan.name }}</strong>
+                                {% if plan.requests_count > 0 %}
+                                <br><small class="text-muted">Содержит {{ plan.requests_count }} заявок</small>
+                                {% endif %}
+                            </td>
+                            <td class="align-middle">
+                                <span class="badge bg-info">{{ plan.year }}</span>
+                            </td>
+                            <td class="align-middle">
+                                {{ plan.responsible }}
+                            </td>
+                            <td class="align-middle">
+                                <span class="badge 
+                                    {% if plan.status == 'Запланирован' %}bg-success
+                                    {% elif plan.status == 'Формируется' %}bg-warning text-dark
+                                    {% elif plan.status == 'Выполняется' %}bg-primary
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ plan.status }}
+                                </span>
+                            </td>
+                            <td class="align-middle text-center">
+                                <span class="fw-bold text-tatneft-green">{{ plan.requests_count }}</span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <div class="alert alert-info mb-0">
+                                    <i class="bi bi-info-circle fs-4 d-block mb-2"></i>
+                                    <strong>Планы отсутствуют</strong><br>
+                                    В системе пока нет созданных планов закупок.<br>
+                                    <small class="text-muted">Создайте заявку на закупку, чтобы план появился в этом списке.</small>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer bg-light text-muted small">
+            <div class="row">
+                <div class="col-md-6">
+                    <i class="bi bi-clock"></i> Последнее обновление: {% now "d.m.Y H:i" %}
+                </div>
+                <div class="col-md-6 text-end">
+                    <i class="bi bi-table"></i> Двойной клик по строке для просмотра деталей
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .plans-table th {
+        font-weight: 600;
+        color: var(--tatneft-green-dark);
+        white-space: nowrap;
+    }
+    
+    .plans-card {
+        border: none;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+    }
+    
+    .plan-row {
+        transition: all 0.2s ease;
+    }
+    
+    .plan-row:hover {
+        background-color: rgba(0, 143, 57, 0.05) !important;
+        transform: scale(1.002);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .plan-row:active {
+        transform: scale(0.998);
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Обработка двойного клика по строке плана
+    const planRows = document.querySelectorAll('.plan-row');
+    
+    planRows.forEach(function(row) {
+        row.addEventListener('dblclick', function() {
+            const url = this.getAttribute('data-plan-url');
+            if (url) {
+                window.location.href = url;
+            }
+        });
+        
+        // Визуальная индикация при наведении
+        row.addEventListener('mouseenter', function() {
+            this.style.borderLeft = '4px solid var(--tatneft-green)';
+        });
+        
+        row.addEventListener('mouseleave', function() {
+            this.style.borderLeft = 'none';
+        });
+    });
+});
+</script>
+{% endblock %}

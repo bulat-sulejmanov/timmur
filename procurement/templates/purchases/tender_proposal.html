@@ -1,0 +1,254 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Главная</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'my_tasks' %}">Мои задачи</a></li>
+                    <li class="breadcrumb-item active">Подача предложения</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="page-title">Подача коммерческого предложения</h2>
+                <span class="badge 
+                    {% if can_edit %}bg-success{% else %}bg-secondary{% endif %} fs-5">
+                    {% if can_edit %}Прием предложений открыт{% else %}Прием предложений закрыт{% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" id="proposalForm">
+        {% csrf_token %}
+        
+        <!-- Блок Основная информация -->
+        <div class="card mb-4">
+            <div class="card-header tatneft-header-green">
+                <h5 class="mb-0 text-white"><i class="bi bi-info-circle"></i> Основная информация о конкурсе</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Название конкурса:</label>
+                        <input type="text" class="form-control" value="{{ tender.name }}" readonly>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Статус конкурса:</label>
+                        <input type="text" class="form-control" value="{{ tender.get_status_display }}" readonly 
+                               style="color: {% if tender.status == 'active' %}green{% else %}gray{% endif %}; font-weight: bold;">
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Контактное лицо:</label>
+                        <input type="text" class="form-control" 
+                               value="{% if tender.contact_person %}{{ tender.contact_person.get_full_name }}{% else %}Не указано{% endif %}" readonly>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Срок подачи предложений:</label>
+                        <input type="text" class="form-control" value="{{ tender.submission_deadline|date:"d.m.Y H:i" }}" readonly 
+                               style="{% if can_edit %}color: green;{% else %}color: red;{% endif %} font-weight: bold;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Блок Предложение -->
+        <div class="card mb-4 {% if not can_edit %}border-secondary{% endif %}">
+            <div class="card-header {% if can_edit %}tatneft-header{% else %}bg-secondary text-white{% endif %}">
+                <h5 class="mb-0"><i class="bi bi-file-text"></i> Ваше предложение</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Дата окончания действия КП <span class="text-danger">*</span></label>
+                        <input type="date" name="validity_date" class="form-control" 
+                               value="{{ proposal.validity_date|date:'Y-m-d' }}" 
+                               {% if not can_edit %}readonly{% endif %} required>
+                        <div class="form-text">Укажите, до какого числа действительно ваше коммерческое предложение</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Дата подачи:</label>
+                        <input type="text" class="form-control" value="{{ proposal.proposal_date|date:"d.m.Y H:i" }}" readonly>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Документы конкурса:</label>
+                        <div class="d-flex gap-2">
+                            {% if tender.procurement_docs %}
+                            <a href="{{ tender.procurement_docs.url }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-file-earmark-pdf"></i> Закупочная документация
+                            </a>
+                            {% endif %}
+                            {% if tender.price_request_doc %}
+                            <a href="{{ tender.price_request_doc.url }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-file-earmark-text"></i> Запрос КП
+                            </a>
+                            {% endif %}
+                            {% if not tender.procurement_docs and not tender.price_request_doc %}
+                            <span class="text-muted">Нет прикрепленных документов</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Ваше коммерческое предложение:</label>
+                        {% if can_edit %}
+                        <input type="file" name="attachment" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx">
+                        {% if proposal.attachment %}
+                        <div class="mt-2">
+                            <small class="text-muted">Текущий файл: <a href="{{ proposal.attachment.url }}" target="_blank">{{ proposal.attachment.name }}</a></small>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="attachment-clear" id="attachment-clear">
+                                <label class="form-check-label" for="attachment-clear">Удалить файл</label>
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% else %}
+                            {% if proposal.attachment %}
+                            <a href="{{ proposal.attachment.url }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-file-earmark"></i> {{ proposal.attachment.name }}
+                            </a>
+                            {% else %}
+                            <span class="text-muted">Не прикреплено</span>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Примечания:</label>
+                    <textarea name="notes" class="form-control" rows="3" {% if not can_edit %}readonly{% endif %}>{{ proposal.notes }}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Блок Предложить цены по позициям -->
+        <div class="card mb-4 {% if not can_edit %}border-secondary{% endif %}">
+            <div class="card-header {% if can_edit %}tatneft-header{% else %}bg-secondary text-white{% endif %} d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-list-ol"></i> Цены по позициям</h5>
+                {% if can_edit %}
+                <span class="badge bg-warning text-dark">Заполните все цены</span>
+                {% endif %}
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 5%;">№</th>
+                                <th style="width: 30%;">Наименование товара</th>
+                                <th style="width: 15%;">Количество</th>
+                                <th style="width: 15%;">Ед. изм.</th>
+                                <th style="width: 17%;">Начальная цена</th>
+                                <th style="width: 18%;">Ваша цена {% if can_edit %}<span class="text-danger">*</span>{% endif %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item_data in items_with_prices %}
+                            {% with item=item_data.item current_price=item_data.current_price %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td><strong>{{ item.purchase_request.nomenclature.name }}</strong></td>
+                                <td>{{ item.quantity }}</td>
+                                <td>{{ item.purchase_request.get_unit_display }}</td>
+                                <td class="text-muted">{{ item.start_price }} ₽</td>
+                                <td>
+                                    {% if can_edit %}
+                                    <div class="input-group">
+                                        <input type="number" name="price_{{ item.id }}" class="form-control proposed-price" 
+                                               step="0.01" min="0" placeholder="0.00"
+                                               value="{{ current_price }}" required>
+                                        <span class="input-group-text">₽</span>
+                                    </div>
+                                    {% else %}
+                                        {% if current_price %}
+                                        <strong class="text-tatneft-green">{{ current_price }} ₽</strong>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endwith %}
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    <i class="bi bi-info-circle fs-4 d-block mb-2"></i>
+                                    Нет позиций в конкурсе
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Кнопки действий -->
+        <div class="d-flex justify-content-between mb-5">
+            <a href="{% url 'my_tasks' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Назад к задачам
+            </a>
+            {% if can_edit %}
+            <button type="submit" class="btn btn-tatneft-primary btn-lg">
+                <i class="bi bi-send-check"></i> Подать предложение
+            </button>
+            {% else %}
+            <div class="alert alert-info mb-0">
+                <i class="bi bi-lock"></i> Конкурс завершен. Редактирование недоступно.
+            </div>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<style>
+    .proposed-price:focus {
+        border-color: var(--tatneft-green);
+        box-shadow: 0 0 0 0.2rem rgba(0,143,57,0.25);
+    }
+</style>
+
+{% if can_edit %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Валидация перед отправкой
+    document.getElementById('proposalForm').addEventListener('submit', function(e) {
+        const priceInputs = document.querySelectorAll('.proposed-price');
+        let hasEmptyPrices = false;
+        
+        priceInputs.forEach(function(input) {
+            if (!input.value || parseFloat(input.value) <= 0) {
+                hasEmptyPrices = true;
+                input.classList.add('is-invalid');
+            } else {
+                input.classList.remove('is-invalid');
+            }
+        });
+        
+        if (hasEmptyPrices) {
+            e.preventDefault();
+            alert('Пожалуйста, заполните цены для всех позиций');
+            return false;
+        }
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

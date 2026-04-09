@@ -1,0 +1,268 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Главная</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'supplier_list' %}">Поставщики</a></li>
+                    <li class="breadcrumb-item active">
+                        {% if is_new %}Добавление поставщика{% else %}Редактирование поставщика{% endif %}
+                    </li>
+                </ol>
+            </nav>
+            <h2 class="page-title">
+                {% if is_new %}Новый поставщик{% else %}Редактирование: {{ supplier.short_name }}{% endif %}
+            </h2>
+        </div>
+    </div>
+
+    {% if form.errors %}
+    <div class="alert alert-danger">
+        <strong>Ошибки в форме:</strong>
+        <ul>
+            {% for field in form %}
+                {% if field.errors %}
+                    <li>{{ field.label }}: {{ field.errors.0 }}</li>
+                {% endif %}
+            {% endfor %}
+            {% for error in form.non_field_errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" id="supplierForm">
+        {% csrf_token %}
+        
+        <!-- Основная информация -->
+        <div class="card mb-4">
+            <div class="card-header tatneft-header-green">
+                <h5 class="mb-0 text-white"><i class="bi bi-info-circle"></i> Основная информация</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8 mb-3">
+                        <label class="form-label">Наименование/ФИО <span class="text-danger">*</span></label>
+                        {{ form.name }}
+                        {% if form.name.errors %}
+                            <div class="text-danger small">{{ form.name.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Тип поставщика <span class="text-danger">*</span></label>
+                        {{ form.supplier_type }}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">ИНН</label>
+                        {{ form.inn }}
+                        <div class="form-text">10 цифр для юр. лиц, 12 для ИП</div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">КПП</label>
+                        {{ form.kpp }}
+                        <div class="form-text">Только для юр. лиц (9 цифр)</div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">ОГРН/ОГРНИП</label>
+                        {{ form.ogrn }}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Статус</label>
+                        {{ form.status }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Адреса и контакты -->
+        <div class="card mb-4">
+            <div class="card-header tatneft-header-green">
+                <h5 class="mb-0 text-white"><i class="bi bi-geo-alt"></i> Адреса и контакты</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Юридический адрес</label>
+                        {{ form.legal_address }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Фактический адрес</label>
+                        {{ form.actual_address }}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Телефон</label>
+                        {{ form.phone }}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Email</label>
+                        {{ form.email }}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Сайт</label>
+                        {{ form.website }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Банковские реквизиты -->
+        <div class="card mb-4">
+            <div class="card-header tatneft-header-green">
+                <h5 class="mb-0 text-white"><i class="bi bi-bank"></i> Банковские реквизиты</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Наименование банка</label>
+                        {{ form.bank_name }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">БИК</label>
+                        {{ form.bank_bik }}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Расчетный счет</label>
+                        {{ form.bank_account }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Корреспондентский счет</label>
+                        {{ form.corr_account }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Контактное лицо -->
+        <div class="card mb-4">
+            <div class="card-header tatneft-header-green">
+                <h5 class="mb-0 text-white"><i class="bi bi-person"></i> Контактное лицо</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">ФИО</label>
+                        {{ form.contact_person }}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Телефон</label>
+                        {{ form.contact_phone }}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Email</label>
+                        {{ form.contact_email }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Дополнительная информация -->
+        <div class="card mb-4">
+            <div class="card-header tatneft-header-green">
+                <h5 class="mb-0 text-white"><i class="bi bi-file-text"></i> Дополнительная информация</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label">Описание</label>
+                        {{ form.description }}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label">Специализация/Категории товаров</label>
+                        {{ form.specialization }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Документы -->
+        <div class="card mb-4">
+            <div class="card-header tatneft-header-green">
+                <h5 class="mb-0 text-white"><i class="bi bi-file-earmark"></i> Документы</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Регистрационные документы</label>
+                        {{ form.registration_doc }}
+                        {% if not is_new and supplier.registration_doc %}
+                            <div class="mt-2">
+                                <small class="text-muted">Текущий файл: <a href="{{ supplier.registration_doc.url }}" target="_blank">{{ supplier.registration_doc.name }}</a></small>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="registration_doc-clear" id="registration_doc-clear">
+                                    <label class="form-check-label" for="registration_doc-clear">Удалить файл</label>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Лицензии и сертификаты</label>
+                        {{ form.license_doc }}
+                        {% if not is_new and supplier.license_doc %}
+                            <div class="mt-2">
+                                <small class="text-muted">Текущий файл: <a href="{{ supplier.license_doc.url }}" target="_blank">{{ supplier.license_doc.name }}</a></small>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="license_doc-clear" id="license_doc-clear">
+                                    <label class="form-check-label" for="license_doc-clear">Удалить файл</label>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Кнопки действий -->
+        <div class="d-flex justify-content-between mb-5">
+            <a href="{% url 'supplier_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Отмена
+            </a>
+            <button type="submit" class="btn btn-tatneft-primary btn-lg">
+                <i class="bi bi-save"></i> 
+                {% if is_new %}Создать поставщика{% else %}Сохранить изменения{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Автоматическое скрытие/показ поля КПП в зависимости от типа поставщика
+    const supplierTypeSelect = document.getElementById('id_supplier_type');
+    const kppField = document.getElementById('id_kpp');
+    
+    if (supplierTypeSelect && kppField) {
+        function toggleKpp() {
+            if (supplierTypeSelect.value === 'company') {
+                kppField.closest('.mb-3').style.display = 'block';
+            } else {
+                kppField.closest('.mb-3').style.display = 'none';
+                kppField.value = '';
+            }
+        }
+        
+        supplierTypeSelect.addEventListener('change', toggleKpp);
+        toggleKpp(); // Инициализация при загрузке
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,220 @@
+<!-- users/user_form.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Главная</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'user_list' %}">Пользователи</a></li>
+                    <li class="breadcrumb-item active">
+                        {% if is_new %}Создание сотрудника{% else %}Редактирование: {{ user_obj.get_full_name }}{% endif %}
+                    </li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="page-title">
+                    {% if is_new %}Новый сотрудник отдела снабжения{% else %}Редактирование пользователя{% endif %}
+                </h2>
+                {% if not is_new %}
+                <span class="badge bg-secondary">{{ user_obj.username }}</span>
+                {% endif %}
+            </div>
+            <p class="text-muted">
+                {% if is_new %}Заполните данные для создания нового сотрудника{% else %}Измените данные пользователя{% endif %}
+            </p>
+        </div>
+    </div>
+
+    {% if form.errors %}
+    <div class="alert alert-danger">
+        <strong>Ошибки в форме:</strong>
+        <ul>
+            {% for field in form %}
+                {% if field.errors %}
+                    <li>{{ field.label }}: {{ field.errors.0 }}</li>
+                {% endif %}
+            {% endfor %}
+            {% for error in form.non_field_errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <form method="post" id="userForm">
+        {% csrf_token %}
+        
+        <!-- Основная информация -->
+        <div class="card mb-4">
+            <div class="card-header tatneft-header-green">
+                <h5 class="mb-0 text-white"><i class="bi bi-person"></i> Личные данные</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Фамилия <span class="text-danger">*</span></label>
+                        {{ form.last_name }}
+                        {% if form.last_name.errors %}
+                            <div class="text-danger small">{{ form.last_name.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Имя <span class="text-danger">*</span></label>
+                        {{ form.first_name }}
+                        {% if form.first_name.errors %}
+                            <div class="text-danger small">{{ form.first_name.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Отчество</label>
+                        {{ form.middle_name }}
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Дата рождения</label>
+                        {{ form.birth_date }}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Должность <span class="text-danger">*</span></label>
+                        {{ form.position }}
+                        <div class="form-text">Например: Специалист отдела снабжения, Менеджер по закупкам</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Телефон</label>
+                        {{ form.phone }}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Email <span class="text-danger">*</span></label>
+                        {{ form.email }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if is_new %}
+        <!-- Учетные данные (только при создании) -->
+        <div class="card mb-4">
+            <div class="card-header tatneft-header-green">
+                <h5 class="mb-0 text-white"><i class="bi bi-shield-lock"></i> Учетные данные</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Логин <span class="text-danger">*</span></label>
+                        {{ form.username }}
+                        <div class="form-text">Используется для входа в систему</div>
+                        {% if form.username.errors %}
+                            <div class="text-danger small">{{ form.username.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Пароль <span class="text-danger">*</span></label>
+                        {{ form.password }}
+                        <div class="form-text">Минимум 6 символов</div>
+                        {% if form.password.errors %}
+                            <div class="text-danger small">{{ form.password.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Подтверждение пароля <span class="text-danger">*</span></label>
+                        {{ form.password_confirm }}
+                        {% if form.password_confirm.errors %}
+                            <div class="text-danger small">{{ form.password_confirm.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Примечание:</strong> Создаваемый пользователь будет иметь роль <strong>"Сотрудник отдела снабжения"</strong>.
+                    Это означает, что он сможет:
+                    <ul class="mb-0 mt-2">
+                        <li>Просматривать и создавать заявки на закупку</li>
+                        <li>Участвовать в конкурсах</li>
+                        <li>Просматривать планы закупок и поставщиков</li>
+                        <li>Видеть свои задачи</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Кнопки действий -->
+        <div class="d-flex justify-content-between mb-5">
+            <a href="{% url 'user_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Отмена
+            </a>
+            <button type="submit" class="btn btn-tatneft-primary btn-lg">
+                <i class="bi bi-save"></i> 
+                {% if is_new %}Создать сотрудника{% else %}Сохранить изменения{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Валидация паролей
+    const form = document.getElementById('userForm');
+    const passwordField = document.querySelector('input[name="password"]');
+    const confirmField = document.querySelector('input[name="password_confirm"]');
+    
+    if (form && passwordField && confirmField) {
+        form.addEventListener('submit', function(e) {
+            if (passwordField.value !== confirmField.value) {
+                e.preventDefault();
+                alert('Пароли не совпадают!');
+                confirmField.focus();
+                return false;
+            }
+            
+            if (passwordField.value.length < 6) {
+                e.preventDefault();
+                alert('Пароль должен содержать минимум 6 символов!');
+                passwordField.focus();
+                return false;
+            }
+        });
+    }
+    
+    // Генерация логина из ФИО
+    const lastNameField = document.querySelector('input[name="last_name"]');
+    const firstNameField = document.querySelector('input[name="first_name"]');
+    const usernameField = document.querySelector('input[name="username"]');
+    
+    if (lastNameField && firstNameField && usernameField) {
+        function generateUsername() {
+            if (lastNameField.value && firstNameField.value && !usernameField.value) {
+                const translit = {
+                    'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e',
+                    'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+                    'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+                    'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '',
+                    'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+                };
+                
+                function transliterate(text) {
+                    return text.toLowerCase().split('').map(char => translit[char] || char).join('');
+                }
+                
+                const lastName = transliterate(lastNameField.value);
+                const firstName = transliterate(firstNameField.value);
+                usernameField.value = lastName + '.' + firstName[0];
+            }
+        }
+        
+        lastNameField.addEventListener('blur', generateUsername);
+        firstNameField.addEventListener('blur', generateUsername);
+    }
+});
+</script>
+{% endblock %}

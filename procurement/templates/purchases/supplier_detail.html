@@ -1,0 +1,283 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Главная</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'supplier_list' %}">Поставщики</a></li>
+                    <li class="breadcrumb-item active">{{ supplier.short_name }}</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="page-title">{{ supplier.name }}</h2>
+                <span class="badge status-{{ supplier.status }} fs-5">
+                    {{ supplier.get_status_display }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Кнопки действий -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="btn-group" role="group">
+                <a href="{% url 'supplier_list' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Назад к списку
+                </a>
+                <a href="{% url 'edit_supplier' supplier.id %}" class="btn btn-warning ms-2">
+                    <i class="bi bi-pencil"></i> Редактировать
+                </a>
+                <form method="post" action="{% url 'delete_supplier' supplier.id %}" class="d-inline ms-2" 
+                      onsubmit="return confirm('Вы уверены, что хотите удалить поставщика \"{{ supplier.name }}\"?');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Удалить
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Основная информация -->
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header tatneft-header-green">
+                    <h5 class="mb-0 text-white"><i class="bi bi-info-circle"></i> Основная информация</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Полное наименование:</label>
+                        <div class="col-sm-8">{{ supplier.name }}</div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Тип поставщика:</label>
+                        <div class="col-sm-8">{{ supplier.get_supplier_type_display }}</div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">ИНН:</label>
+                        <div class="col-sm-8">
+                            {% if supplier.inn %}
+                                <code>{{ supplier.inn }}</code>
+                            {% else %}
+                                <span class="text-muted">Не указан</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if supplier.kpp %}
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">КПП:</label>
+                        <div class="col-sm-8"><code>{{ supplier.kpp }}</code></div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if supplier.ogrn %}
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">ОГРН/ОГРНИП:</label>
+                        <div class="col-sm-8"><code>{{ supplier.ogrn }}</code></div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if supplier.description %}
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Описание:</label>
+                        <div class="col-sm-8">{{ supplier.description|linebreaks }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if supplier.specialization %}
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Специализация:</label>
+                        <div class="col-sm-8">{{ supplier.specialization|linebreaks }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Адреса и контакты -->
+            <div class="card mb-4">
+                <div class="card-header tatneft-header-green">
+                    <h5 class="mb-0 text-white"><i class="bi bi-geo-alt"></i> Адреса и контакты</h5>
+                </div>
+                <div class="card-body">
+                    {% if supplier.legal_address %}
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Юридический адрес:</label>
+                        <div class="col-sm-8">{{ supplier.legal_address }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if supplier.actual_address %}
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Фактический адрес:</label>
+                        <div class="col-sm-8">{{ supplier.actual_address }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if supplier.phone %}
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Телефон:</label>
+                        <div class="col-sm-8">{{ supplier.phone }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if supplier.email %}
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Email:</label>
+                        <div class="col-sm-8">{{ supplier.email }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if supplier.website %}
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Сайт:</label>
+                        <div class="col-sm-8">
+                            <a href="{{ supplier.website }}" target="_blank">{{ supplier.website }}</a>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Банковские реквизиты -->
+            <div class="card mb-4">
+                <div class="card-header tatneft-header-green">
+                    <h5 class="mb-0 text-white"><i class="bi bi-bank"></i> Банковские реквизиты</h5>
+                </div>
+                <div class="card-body">
+                    {% if supplier.bank_name %}
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Наименование банка:</label>
+                        <div class="col-sm-8">{{ supplier.bank_name }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if supplier.bank_bik %}
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">БИК:</label>
+                        <div class="col-sm-8"><code>{{ supplier.bank_bik }}</code></div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if supplier.bank_account %}
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Расчетный счет:</label>
+                        <div class="col-sm-8"><code>{{ supplier.bank_account }}</code></div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if supplier.corr_account %}
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Корреспондентский счет:</label>
+                        <div class="col-sm-8"><code>{{ supplier.corr_account }}</code></div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Боковая панель -->
+        <div class="col-md-4">
+            <!-- Контактное лицо -->
+            <div class="card mb-4">
+                <div class="card-header tatneft-header">
+                    <h5 class="mb-0 text-white"><i class="bi bi-person"></i> Контактное лицо</h5>
+                </div>
+                <div class="card-body">
+                    {% if supplier.contact_person %}
+                        <div class="mb-3">
+                            <label class="fw-bold text-muted">ФИО:</label>
+                            <p class="mb-0">{{ supplier.contact_person }}</p>
+                        </div>
+                        
+                        {% if supplier.contact_phone %}
+                        <div class="mb-3">
+                            <label class="fw-bold text-muted">Телефон:</label>
+                            <p class="mb-0">{{ supplier.contact_phone }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if supplier.contact_email %}
+                        <div class="mb-3">
+                            <label class="fw-bold text-muted">Email:</label>
+                            <p class="mb-0">{{ supplier.contact_email }}</p>
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <p class="text-muted mb-0">Контактное лицо не указано</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Документы -->
+            <div class="card mb-4">
+                <div class="card-header tatneft-header">
+                    <h5 class="mb-0 text-white"><i class="bi bi-file-earmark-text"></i> Документы</h5>
+                </div>
+                <div class="card-body">
+                    {% if supplier.registration_doc %}
+                    <div class="mb-3">
+                        <a href="{{ supplier.registration_doc.url }}" target="_blank" class="btn btn-outline-primary w-100">
+                            <i class="bi bi-file-earmark-pdf"></i> Регистрационные документы
+                        </a>
+                    </div>
+                    {% endif %}
+                    
+                    {% if supplier.license_doc %}
+                    <div class="mb-3">
+                        <a href="{{ supplier.license_doc.url }}" target="_blank" class="btn btn-outline-primary w-100">
+                            <i class="bi bi-file-earmark-check"></i> Лицензии и сертификаты
+                        </a>
+                    </div>
+                    {% endif %}
+                    
+                    {% if not supplier.registration_doc and not supplier.license_doc %}
+                    <p class="text-muted mb-0 text-center">
+                        <i class="bi bi-info-circle"></i> Документы не прикреплены
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Служебная информация -->
+            <div class="card">
+                <div class="card-header tatneft-header">
+                    <h5 class="mb-0 text-white"><i class="bi bi-clock-history"></i> История</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="fw-bold text-muted">Дата создания:</label>
+                        <p class="mb-0">{{ supplier.created_at|date:"d.m.Y H:i" }}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="fw-bold text-muted">Дата обновления:</label>
+                        <p class="mb-0">{{ supplier.updated_at|date:"d.m.Y H:i" }}</p>
+                    </div>
+                    
+                    {% if supplier.created_by %}
+                    <div class="mb-0">
+                        <label class="fw-bold text-muted">Кем создан:</label>
+                        <p class="mb-0">{{ supplier.created_by.get_full_name }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .status-active { background-color: #198754; color: white; }
+    .status-new { background-color: #ffc107; color: #000; }
+    .status-inactive { background-color: #6c757d; color: white; }
+    .status-blocked { background-color: #dc3545; color: white; }
+</style>
+{% endblock %}

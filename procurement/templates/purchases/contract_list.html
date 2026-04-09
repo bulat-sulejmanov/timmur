@@ -1,0 +1,417 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Главная</a></li>
+                    <li class="breadcrumb-item"><a href="#">Закупки</a></li>
+                    <li class="breadcrumb-item active">Договоры</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="page-title">Договоры</h2>
+                <span class="badge bg-tatneft-green text-white">Всего договоров: {{ status_counts.total }}</span>
+            </div>
+            <p class="text-muted">Управление договорами с поставщиками</p>
+        </div>
+    </div>
+
+    <!-- Статистика -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="btn-group w-100" role="group">
+                <button type="button" class="btn btn-outline-secondary">
+                    Всего <span class="badge bg-secondary">{{ status_counts.total }}</span>
+                </button>
+                <button type="button" class="btn btn-outline-warning">
+                    Черновики <span class="badge bg-warning text-dark">{{ status_counts.draft }}</span>
+                </button>
+                <button type="button" class="btn btn-outline-primary">
+                    На согласовании <span class="badge bg-primary">{{ status_counts.pending }}</span>
+                </button>
+                <button type="button" class="btn btn-outline-success">
+                    Согласовано <span class="badge bg-success">{{ status_counts.approved }}</span>
+                </button>
+                <button type="button" class="btn btn-outline-info">
+                    Действующие <span class="badge bg-info">{{ status_counts.active }}</span>
+                </button>
+                <button type="button" class="btn btn-outline-dark">
+                    Выполнено <span class="badge bg-dark">{{ status_counts.completed }}</span>
+                </button>
+                <button type="button" class="btn btn-outline-danger">
+                    Отклонено <span class="badge bg-danger">{{ status_counts.rejected }}</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card contract-card">
+        <div class="card-header tatneft-header-green d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 text-white"><i class="bi bi-file-text"></i> Реестр договоров</h5>
+            <div>
+                <a href="{% url 'create_contract' %}" class="btn btn-light btn-sm me-2">
+                    <i class="bi bi-plus-lg"></i> Создать договор
+                </a>
+                <span class="badge bg-white text-tatneft-green">Татнефтеснаб</span>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 contract-table align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="border-0" style="width: 20%;">Название договора</th>
+                            <th class="border-0" style="width: 15%;">Компания</th>
+                            <th class="border-0" style="width: 12%;">Коммерческое предложение</th>
+                            <th class="border-0" style="width: 10%;">Сумма</th>
+                            <th class="border-0" style="width: 10%;">Статус</th>
+                            <th class="border-0" style="width: 12%;">Окончание срока</th>
+                            <th class="border-0" style="width: 11%;">Ответственный</th>
+                            <th class="border-0" style="width: 10%;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for contract in contracts %}
+                        <tr class="contract-row" data-contract-url="{% url 'view_contract' contract.id %}" style="cursor: pointer;" title="Двойной клик для открытия">
+                            <td class="align-middle">
+                                <strong class="text-tatneft-green">{{ contract.name|truncatechars:40 }}</strong>
+                                {% if contract.comment %}
+                                    <br><small class="text-muted">{{ contract.comment|truncatechars:30 }}</small>
+                                {% endif %}
+                            </td>
+                            <td class="align-middle">
+                                <a href="{% url 'view_supplier' contract.supplier.id %}" class="text-decoration-none supplier-link" onclick="event.stopPropagation();">
+                                    {{ contract.supplier.short_name }}
+                                </a>
+                            </td>
+                            <td class="align-middle">
+                                {% if contract.commercial_proposal %}
+                                    <a href="{{ contract.commercial_proposal.url }}" target="_blank" class="btn btn-sm btn-outline-primary file-link" onclick="event.stopPropagation();">
+                                        <i class="bi bi-file-earmark-text"></i> Открыть
+                                    </a>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="align-middle">
+                                <span class="fw-bold">{{ contract.contract_amount|floatformat:2 }} ₽</span>
+                            </td>
+                            <td class="align-middle">
+                                <span class="badge bg-{{ contract.get_status_display_color }} fs-6">
+                                    {{ contract.get_status_display }}
+                                </span>
+                                {% if contract.approver and contract.status == 'pending' %}
+                                    <br><small class="text-muted">{{ contract.approver.get_full_name|truncatechars:12 }}</small>
+                                {% endif %}
+                            </td>
+                            <td class="align-middle">
+                                {% if contract.end_date %}
+                                    <span class="{% if contract.end_date < today %}text-danger{% elif contract.end_date <= today_plus_30 %}text-warning{% endif %}">
+                                        {{ contract.end_date|date:"d.m.Y" }}
+                                    </span>
+                                    {% if contract.end_date < today %}
+                                        <br><span class="badge bg-danger">Просрочен</span>
+                                    {% elif contract.end_date <= today_plus_30 %}
+                                        <br><span class="badge bg-warning text-dark">Истекает</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="align-middle">
+                                {% if contract.responsible %}
+                                    {{ contract.responsible.get_full_name|truncatechars:15 }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="align-middle">
+                                <div class="btn-group btn-group-sm action-buttons">
+                                    <!-- Просмотр -->
+                                    <a href="{% url 'view_contract' contract.id %}" class="btn btn-outline-primary action-btn" title="Просмотр">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    
+                                    <!-- Редактирование -->
+                                    {% if contract.is_editable %}
+                                    <a href="{% url 'edit_contract' contract.id %}" class="btn btn-outline-warning action-btn" title="Редактировать">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    {% endif %}
+                                    
+                                    <!-- Отправка на согласование -->
+                                    {% if contract.is_editable %}
+                                    <button type="button" class="btn btn-outline-success approval-btn" title="Отправить на согласование" 
+                                            data-bs-toggle="modal" data-bs-target="#approvalModal{{ contract.id }}">
+                                        <i class="bi bi-send-check"></i>
+                                    </button>
+                                    {% endif %}
+                                    
+                                    <!-- Согласование -->
+                                    {% if contract.can_be_approved and contract.approver == user %}
+                                    <a href="{% url 'approve_contract' contract.id %}" class="btn btn-success action-btn" title="Согласовать">
+                                        <i class="bi bi-check-lg"></i>
+                                    </a>
+                                    {% endif %}
+                                    
+                                    <!-- Удаление -->
+                                    {% if user == contract.created_by or user.is_manager or user.is_staff %}
+                                    <form method="post" action="{% url 'delete_contract' contract.id %}" class="d-inline delete-form" 
+                                          onsubmit="return confirm('Вы уверены, что хотите удалить договор \"{{ contract.name }}\"?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-outline-danger action-btn" title="Удалить">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Модальное окно для выбора согласующего -->
+                                {% if contract.is_editable %}
+                                <div class="modal fade approval-modal" id="approvalModal{{ contract.id }}" tabindex="-1" aria-labelledby="approvalModalLabel{{ contract.id }}" aria-hidden="true" data-bs-backdrop="static">
+                                    <div class="modal-dialog modal-sm modal-dialog-centered">
+                                        <div class="modal-content">
+                                            <form method="post" action="{% url 'send_contract_for_approval' contract.id %}" class="approval-form">
+                                                {% csrf_token %}
+                                                <div class="modal-header bg-success text-white">
+                                                    <h5 class="modal-title" id="approvalModalLabel{{ contract.id }}">
+                                                        <i class="bi bi-send-check"></i> Отправка на согласование
+                                                    </h5>
+                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <p class="mb-2"><strong>{{ contract.name }}</strong></p>
+                                                    <p class="text-muted small mb-3">{{ contract.supplier.name }}</p>
+                                                    <hr>
+                                                    <div class="mb-3">
+                                                        <label for="approver{{ contract.id }}" class="form-label fw-bold">Выберите согласующего:</label>
+                                                        <select name="approver" id="approver{{ contract.id }}" class="form-select" required>
+                                                            <option value="">-- Выберите --</option>
+                                                            {% for approver in available_approvers %}
+                                                            <option value="{{ approver.id }}" {% if approver.id == user.id %}style="background-color: #d1e7dd;"{% endif %}>
+                                                                {{ approver.get_full_name }} 
+                                                                {% if approver.id == user.id %}(Вы){% endif %}
+                                                                {% if approver.position %}
+                                                                    ({{ approver.position }})
+                                                                {% else %}
+                                                                    {% if approver.is_superuser %}(Администратор)
+                                                                    {% elif approver.is_staff %}(Персонал)
+                                                                    {% elif approver.is_manager %}(Руководитель)
+                                                                    {% endif %}
+                                                                {% endif %}
+                                                            </option>
+                                                            {% empty %}
+                                                            <option value="" disabled>Нет доступных согласующих</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                        {% if not is_privileged_user %}
+                                                        <div class="form-text text-muted mt-1">
+                                                            <i class="bi bi-info-circle"></i> Вы можете отправить только руководителю или администратору
+                                                        </div>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                                                    <button type="submit" class="btn btn-success">
+                                                        <i class="bi bi-send"></i> Отправить
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-5">
+                                <div class="alert alert-info mb-0">
+                                    <i class="bi bi-info-circle fs-4 d-block mb-2"></i>
+                                    <strong>Договоры отсутствуют</strong><br>
+                                    В системе пока нет договоров.<br>
+                                    <small class="text-muted">Используйте кнопку "Создать договор" для добавления.</small>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer bg-light text-muted small">
+            <div class="row">
+                <div class="col-md-6">
+                    <i class="bi bi-clock"></i> Последнее обновление: {% now "d.m.Y H:i" %}
+                </div>
+                <div class="col-md-6 text-end">
+                    <i class="bi bi-table"></i> Двойной клик по строке для просмотра деталей
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .contract-table th {
+        font-weight: 600;
+        color: var(--tatneft-green-dark);
+        white-space: nowrap;
+        font-size: 0.9rem;
+    }
+    
+    .contract-card {
+        border: none;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+    }
+    
+    .contract-row {
+        transition: all 0.2s ease;
+    }
+    
+    .contract-row:hover {
+        background-color: rgba(0, 143, 57, 0.05) !important;
+    }
+    
+    .btn-group-sm > .btn, .btn-sm {
+        padding: 0.25rem 0.4rem;
+        font-size: 0.875rem;
+    }
+    
+    /* Подсветка своего имени в списке */
+    option[style*="background-color"] {
+        font-weight: bold;
+    }
+    
+    /* Фикс для модальных окон */
+    .modal {
+        z-index: 1055 !important;
+    }
+    
+    .modal-backdrop {
+        z-index: 1050 !important;
+    }
+    
+    /* Убираем cursor:pointer с ячеек с кнопками */
+    .action-buttons,
+    .action-buttons * {
+        cursor: default !important;
+    }
+    
+    .action-btn,
+    .approval-btn {
+        cursor: pointer !important;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Обработка двойного клика по строке договора (только если клик не по кнопкам)
+    const contractRows = document.querySelectorAll('.contract-row');
+    
+    contractRows.forEach(function(row) {
+        row.addEventListener('dblclick', function(e) {
+            // Проверяем, что клик был не по кнопкам или ссылкам внутри строки
+            if (e.target.closest('.action-buttons') || 
+                e.target.closest('a') || 
+                e.target.closest('button') ||
+                e.target.closest('.modal')) {
+                return;
+            }
+            
+            const url = this.getAttribute('data-contract-url');
+            if (url) {
+                window.location.href = url;
+            }
+        });
+        
+        // Визуальная индикация при наведении (только для ячеек без кнопок)
+        row.addEventListener('mouseenter', function(e) {
+            if (!e.target.closest('.action-buttons')) {
+                this.style.borderLeft = '4px solid var(--tatneft-green)';
+            }
+        });
+        
+        row.addEventListener('mouseleave', function() {
+            this.style.borderLeft = 'none';
+        });
+    });
+    
+    // Останавливаем всплытие событий для всех кнопок действий
+    const actionButtons = document.querySelectorAll('.action-btn, .approval-btn');
+    actionButtons.forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    });
+    
+    // Специальная обработка для кнопок открытия модального окна
+    const approvalBtns = document.querySelectorAll('.approval-btn');
+    approvalBtns.forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const targetModal = this.getAttribute('data-bs-target');
+            const modal = document.querySelector(targetModal);
+            
+            if (modal) {
+                // Используем Bootstrap API для показа модального окна
+                const bsModal = new bootstrap.Modal(modal);
+                bsModal.show();
+            }
+        });
+    });
+    
+    // Останавливаем всплытие для ссылок на поставщиков
+    const supplierLinks = document.querySelectorAll('.supplier-link');
+    supplierLinks.forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    });
+    
+    // Останавливаем всплытие для ссылок на файлы
+    const fileLinks = document.querySelectorAll('.file-link');
+    fileLinks.forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    });
+    
+    // Останавливаем всплытие для форм удаления
+    const deleteForms = document.querySelectorAll('.delete-form');
+    deleteForms.forEach(function(form) {
+        form.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    });
+    
+    // Фикс: предотвращаем закрытие модального окна при клике внутри него
+    const modals = document.querySelectorAll('.approval-modal');
+    modals.forEach(function(modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                // Клик по backdrop - позволяем стандартному поведению
+                return;
+            }
+            // Клик внутри модального окна - останавливаем всплытие
+            e.stopPropagation();
+        });
+    });
+    
+    // Фикс для форм внутри модальных окон
+    const approvalForms = document.querySelectorAll('.approval-form');
+    approvalForms.forEach(function(form) {
+        form.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    });
+});
+</script>
+{% endblock %}

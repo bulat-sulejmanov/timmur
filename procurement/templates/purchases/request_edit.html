@@ -1,0 +1,209 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Главная</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'purchase_request_list' %}">Заявки на закупку</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'view_purchase_request' request_obj.id %}">Заявка №{{ request_obj.id }}</a></li>
+                    <li class="breadcrumb-item active">
+                        {% if is_revision %}Исправление замечаний{% else %}Редактирование{% endif %}
+                    </li>
+                </ol>
+            </nav>
+            <h2 class="page-title">
+                {% if is_revision %}
+                    <i class="bi bi-exclamation-triangle text-warning"></i> Исправление заявки №{{ request_obj.id }}
+                {% else %}
+                    Редактирование заявки №{{ request_obj.id }}
+                {% endif %}
+            </h2>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- Блок замечаний (если это доработка) -->
+    {% if is_revision %}
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="alert alert-warning border-warning">
+                <h5 class="alert-heading"><i class="bi bi-exclamation-circle"></i> Замечания согласующего:</h5>
+                <p class="mb-0">{{ request_obj.rejection_reason|linebreaks }}</p>
+                <hr>
+                <p class="mb-0 small">После исправления замечаний нажмите "Сохранить изменения", затем отправьте заявку повторно на согласование.</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        {{ form.status }}
+        {{ form.unit }}
+        
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card mb-4 {% if is_revision %}border-warning{% endif %}">
+                    <div class="card-header {% if is_revision %}bg-warning text-dark{% else %}tatneft-header-green{% endif %} text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-pencil-square"></i> 
+                            {% if is_revision %}Устранение замечаний{% else %}Редактирование заявки{% endif %}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Номенклатура -->
+                        <div class="mb-3">
+                            <label class="form-label">Номенклатура <span class="text-danger">*</span></label>
+                            {{ form.nomenclature }}
+                            {% if form.nomenclature.errors %}
+                                <div class="text-danger small">{{ form.nomenclature.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row">
+                            <!-- Максимальная цена -->
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Максимальная цена</label>
+                                {{ form.max_price }}
+                            </div>
+                            <!-- Количество -->
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Количество <span class="text-danger">*</span></label>
+                                {{ form.quantity }}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Единица измерения (видимое поле) -->
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Единица измерения</label>
+                                {{ form.unit_display }}
+                            </div>
+                        </div>
+
+                        <!-- ПЛАН -->
+                        <div class="mb-3">
+                            <label class="form-label">План</label>
+                            {{ form.plan_type }}
+                        </div>
+
+                        <!-- Статья бюджета -->
+                        <div class="mb-3">
+                            <label class="form-label">Статья бюджета</label>
+                            {{ form.budget_article }}
+                        </div>
+
+                        <!-- Описание -->
+                        <div class="mb-3">
+                            <label class="form-label">Описание</label>
+                            {{ form.description }}
+                        </div>
+
+                        <!-- Файлы -->
+                        <div class="mb-3">
+                            <label class="form-label">Файлы</label>
+                            {{ form.attachment }}
+                            {% if request_obj.attachment %}
+                                <div class="mt-2 form-check">
+                                    <input class="form-check-input" type="checkbox" name="clear_attachment" id="clearAttachment">
+                                    <label class="form-check-label" for="clearAttachment">
+                                        Удалить текущий файл
+                                    </label>
+                                </div>
+                                <div class="mt-1">
+                                    <small class="text-muted">Текущий файл: <a href="{{ request_obj.attachment.url }}" target="_blank">{{ request_obj.attachment.name }}</a></small>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <a href="{% url 'view_purchase_request' request_obj.id %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Отмена
+                    </a>
+                    <button type="submit" class="btn {% if is_revision %}btn-warning{% else %}btn-tatneft-primary{% endif %}">
+                        <i class="bi bi-check-lg"></i> 
+                        {% if is_revision %}Сохранить исправления{% else %}Сохранить изменения{% endif %}
+                    </button>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header tatneft-header">
+                        <h5 class="mb-0 text-white">Информация</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Заявитель</label>
+                            <input type="text" class="form-control" value="{{ request_obj.requester.get_full_name }}" readonly>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Дата создания</label>
+                            <input type="text" class="form-control" 
+                                   value="{{ request_obj.created_at|date:'d.m.Y H:i' }}" readonly>
+                        </div>
+                        
+                        {% if is_revision %}
+                        <div class="alert alert-warning">
+                            <i class="bi bi-info-circle"></i>
+                            <small>После сохранения исправлений не забудьте отправить заявку повторно на согласование через реестр заявок.</small>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            <small>После сохранения изменений заявку можно будет отправить на согласование.</small>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var nomenclatureSelect = document.getElementById('id_nomenclature');
+    var unitField = document.getElementById('id_unit');
+    var unitDisplayField = document.getElementById('id_unit_display');
+    
+    if (nomenclatureSelect) {
+        nomenclatureSelect.addEventListener('change', function() {
+            var materialId = this.value;
+            if (materialId) {
+                fetch('/api/material/' + materialId + '/unit/')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (unitField) unitField.value = data.unit;
+                        if (unitDisplayField) unitDisplayField.value = data.unit_display;
+                    })
+                    .catch(error => console.error('Ошибка:', error));
+            } else {
+                if (unitDisplayField) unitDisplayField.value = 'Выберите номенклатуру';
+                if (unitField) unitField.value = '';
+            }
+        });
+        
+        if (nomenclatureSelect.value) {
+            nomenclatureSelect.dispatchEvent(new Event('change'));
+        }
+    }
+});
+</script>
+{% endblock %}

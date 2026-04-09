@@ -1,0 +1,211 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Главная</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'contract_list' %}">Договоры</a></li>
+                    <li class="breadcrumb-item active">
+                        {% if is_new %}Создание договора{% else %}Редактирование договора{% endif %}
+                    </li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="page-title">
+                    {% if is_new %}Новый договор{% else %}Редактирование договора{% endif %}
+                </h2>
+                <span class="badge bg-secondary">
+                    {% if is_new %}Статус: Черновик{% else %}Статус: {{ contract.get_status_display }}{% endif %}
+                </span>
+            </div>
+            <p class="text-muted">
+                {% if is_new %}Заполните информацию о договоре{% else %}Измените информацию о договоре{% endif %}
+            </p>
+        </div>
+    </div>
+
+    {% if form.errors %}
+    <div class="alert alert-danger">
+        <strong>Ошибки в форме:</strong>
+        <ul>
+            {% for field in form %}
+                {% if field.errors %}
+                    <li>{{ field.label }}: {{ field.errors.0 }}</li>
+                {% endif %}
+            {% endfor %}
+            {% for error in form.non_field_errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" id="contractForm">
+        {% csrf_token %}
+        
+        <!-- Блок Основная информация -->
+        <div class="card mb-4">
+            <div class="card-header tatneft-header-green">
+                <h5 class="mb-0 text-white"><i class="bi bi-info-circle"></i> Основная информация</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label">{{ form.name.label }} <span class="text-danger">*</span></label>
+                        {{ form.name }}
+                        {% if form.name.errors %}
+                            <div class="text-danger small">{{ form.name.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">{{ form.contract_amount.label }} <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            {{ form.contract_amount }}
+                            <span class="input-group-text">₽</span>
+                        </div>
+                        {% if form.contract_amount.errors %}
+                            <div class="text-danger small">{{ form.contract_amount.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">{{ form.contract_date.label }} <span class="text-danger">*</span></label>
+                        {{ form.contract_date }}
+                        {% if form.contract_date.errors %}
+                            <div class="text-danger small">{{ form.contract_date.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">{{ form.end_date.label }} <span class="text-danger">*</span></label>
+                        {{ form.end_date }}
+                        {% if form.end_date.errors %}
+                            <div class="text-danger small">{{ form.end_date.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ form.responsible.label }}</label>
+                        {{ form.responsible }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ form.status.label }}</label>
+                        {{ form.status }}
+                        <div class="form-text">Статус управляется автоматически при согласовании</div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label">{{ form.comment.label }}</label>
+                        {{ form.comment }}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ form.contract_document.label }}</label>
+                        {{ form.contract_document }}
+                        {% if contract and contract.contract_document %}
+                            <div class="mt-2">
+                                <small class="text-muted">Текущий файл: <a href="{{ contract.contract_document.url }}" target="_blank">{{ contract.contract_document.name }}</a></small>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="contract_document-clear" id="contract_document-clear">
+                                    <label class="form-check-label" for="contract_document-clear">Удалить файл</label>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Блок Связи -->
+        <div class="card mb-4">
+            <div class="card-header tatneft-header-green">
+                <h5 class="mb-0 text-white"><i class="bi bi-link"></i> Связи</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ form.supplier.label }} <span class="text-danger">*</span></label>
+                        {{ form.supplier }}
+                        <div class="form-text">Выберите поставщика из списка</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ form.commercial_proposal.label }}</label>
+                        {{ form.commercial_proposal }}
+                        {% if contract and contract.commercial_proposal %}
+                            <div class="mt-2">
+                                <small class="text-muted">Текущий файл: <a href="{{ contract.commercial_proposal.url }}" target="_blank">{{ contract.commercial_proposal.name }}</a></small>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="commercial_proposal-clear" id="commercial_proposal-clear">
+                                    <label class="form-check-label" for="commercial_proposal-clear">Удалить файл</label>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Кнопки действий -->
+        <div class="d-flex justify-content-between mb-5">
+            <a href="{% url 'contract_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Отмена
+            </a>
+            <button type="submit" class="btn btn-tatneft-primary btn-lg">
+                <i class="bi bi-save"></i> 
+                {% if is_new %}Создать договор{% else %}Сохранить изменения{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Валидация дат
+    const contractDateInput = document.querySelector('input[name="contract_date"]');
+    const endDateInput = document.querySelector('input[name="end_date"]');
+    
+    function validateDates() {
+        if (contractDateInput.value && endDateInput.value) {
+            const contractDate = new Date(contractDateInput.value);
+            const endDate = new Date(endDateInput.value);
+            
+            if (endDate < contractDate) {
+                endDateInput.classList.add('is-invalid');
+                endDateInput.setCustomValidity('Дата окончания не может быть раньше даты договора');
+            } else {
+                endDateInput.classList.remove('is-invalid');
+                endDateInput.setCustomValidity('');
+            }
+        }
+    }
+    
+    if (contractDateInput && endDateInput) {
+        contractDateInput.addEventListener('change', validateDates);
+        endDateInput.addEventListener('change', validateDates);
+    }
+    
+    // Валидация суммы
+    const amountInput = document.querySelector('input[name="contract_amount"]');
+    if (amountInput) {
+        amountInput.addEventListener('input', function() {
+            if (parseFloat(this.value) < 0) {
+                this.classList.add('is-invalid');
+            } else {
+                this.classList.remove('is-invalid');
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

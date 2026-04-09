@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Главная</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'my_tasks' %}">Мои задачи</a></li>
+                    <li class="breadcrumb-item active">Согласование договора</li>
+                </ol>
+            </nav>
+            <h2 class="page-title">Согласование договора</h2>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Левая колонка - данные договора (только для просмотра) -->
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header tatneft-header-green text-white">
+                    <h5 class="mb-0"><i class="bi bi-file-text"></i> Данные договора</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Название -->
+                    <div class="mb-3 row">
+                        <label class="col-sm-4 col-form-label fw-bold">Название договора:</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control-plaintext" value="{{ contract.name }}" readonly>
+                        </div>
+                    </div>
+                    
+                    <hr>
+
+                    <!-- Компания -->
+                    <div class="mb-3 row">
+                        <label class="col-sm-4 col-form-label fw-bold">Компания:</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control-plaintext" value="{{ contract.supplier.name }}" readonly>
+                        </div>
+                    </div>
+
+                    <!-- Сумма -->
+                    <div class="mb-3 row">
+                        <label class="col-sm-4 col-form-label fw-bold">Сумма договора:</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control-plaintext fw-bold text-tatneft-green" 
+                                   value="{{ contract.contract_amount|floatformat:2 }} ₽" readonly>
+                        </div>
+                    </div>
+
+                    <!-- Сроки -->
+                    <div class="mb-3 row">
+                        <label class="col-sm-4 col-form-label fw-bold">Дата договора:</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control-plaintext" 
+                                   value="{{ contract.contract_date|date:'d.m.Y' }}" readonly>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 row">
+                        <label class="col-sm-4 col-form-label fw-bold">Окончание срока:</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control-plaintext" 
+                                   value="{{ contract.end_date|date:'d.m.Y' }}" readonly>
+                        </div>
+                    </div>
+
+                    <!-- Ответственный -->
+                    <div class="mb-3 row">
+                        <label class="col-sm-4 col-form-label fw-bold">Ответственный:</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control-plaintext" 
+                                   value="{{ contract.responsible.get_full_name|default:'Не указан' }}" readonly>
+                        </div>
+                    </div>
+
+                    <!-- Создатель -->
+                    <div class="mb-3 row">
+                        <label class="col-sm-4 col-form-label fw-bold">Кем создан:</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control-plaintext" 
+                                   value="{{ contract.created_by.get_full_name|default:'Не указан' }}" readonly>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Комментарий -->
+                    <div class="mb-3 row">
+                        <label class="col-sm-4 col-form-label fw-bold">Комментарий:</label>
+                        <div class="col-sm-8">
+                            <textarea class="form-control" rows="3" readonly>{{ contract.comment }}</textarea>
+                        </div>
+                    </div>
+
+                    <!-- Коммерческое предложение -->
+                    {% if contract.commercial_proposal %}
+                    <div class="mb-3 row">
+                        <label class="col-sm-4 col-form-label fw-bold">Коммерческое предложение:</label>
+                        <div class="col-sm-8">
+                            <a href="{{ contract.commercial_proposal.url }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-file-earmark"></i> Открыть файл
+                            </a>
+                            <small class="text-muted ms-2">{{ contract.commercial_proposal.name }}</small>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Документ договора -->
+                    {% if contract.contract_document %}
+                    <div class="mb-3 row">
+                        <label class="col-sm-4 col-form-label fw-bold">Документ договора:</label>
+                        <div class="col-sm-8">
+                            <a href="{{ contract.contract_document.url }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-file-earmark-text"></i> Открыть файл
+                            </a>
+                            <small class="text-muted ms-2">{{ contract.contract_document.name }}</small>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Правая колонка - форма согласования -->
+        <div class="col-md-4">
+            <div class="card sticky-top" style="top: 20px; z-index: 100;">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-check2-square"></i> Принятие решения</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="comment" class="form-label fw-bold">Комментарий:</label>
+                            <textarea class="form-control" id="comment" name="comment" rows="4" 
+                                      placeholder="Введите комментарий (обязателен при отклонении)"></textarea>
+                            <div class="form-text text-muted">При согласовании комментарий необязателен</div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="d-grid gap-2">
+                            <!-- Согласовать -->
+                            <button type="submit" name="action" value="approve" class="btn btn-success btn-lg">
+                                <i class="bi bi-check-circle"></i> Согласовать
+                            </button>
+                            
+                            <!-- Отклонить -->
+                            <button type="submit" name="action" value="reject" class="btn btn-danger"
+                                    onclick="return confirmReject()">
+                                <i class="bi bi-x-circle"></i> Отклонить
+                            </button>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <a href="{% url 'my_tasks' %}" class="btn btn-outline-secondary w-100">
+                                <i class="bi bi-arrow-left"></i> Вернуться к задачам
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmReject() {
+    var comment = document.getElementById('comment').value.trim();
+    
+    if (!comment) {
+        alert('При отклонении договора необходимо указать причину в комментарии!');
+        return false;
+    }
+    
+    return confirm('Вы уверены, что хотите отклонить этот договор?');
+}
+</script>
+{% endblock %}

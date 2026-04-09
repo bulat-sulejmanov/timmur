@@ -1,0 +1,428 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Главная</a></li>
+                    <li class="breadcrumb-item active">Заявки на закупку</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="page-title">Заявки на закупку</h2>
+                <span class="badge bg-tatneft-green text-white">Всего заявок: {{ status_counts.total }}</span>
+            </div>
+            <p class="text-muted">Управление заявками на закупку материально-технических ресурсов</p>
+        </div>
+    </div>
+
+    <!-- Статистика -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="btn-group w-100" role="group">
+                <button type="button" class="btn btn-outline-secondary">
+                    Всего <span class="badge bg-secondary">{{ status_counts.total }}</span>
+                </button>
+                <button type="button" class="btn btn-outline-warning">
+                    Черновики <span class="badge bg-warning text-dark">{{ status_counts.draft }}</span>
+                </button>
+                <button type="button" class="btn btn-outline-primary">
+                    На согласовании <span class="badge bg-primary">{{ status_counts.pending }}</span>
+                </button>
+                <button type="button" class="btn btn-outline-success">
+                    Согласовано <span class="badge bg-success">{{ status_counts.approved }}</span>
+                </button>
+                <button type="button" class="btn btn-outline-danger">
+                    Отклонено <span class="badge bg-danger">{{ status_counts.rejected }}</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card requests-card">
+        <div class="card-header tatneft-header-green d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 text-white"><i class="bi bi-file-earmark-text"></i> Реестр заявок</h5>
+            <div>
+                <a href="{% url 'create_purchase_request' %}" class="btn btn-light btn-sm me-2">
+                    <i class="bi bi-plus-lg"></i> Создать заявку
+                </a>
+                <button type="button" class="btn btn-light btn-sm me-2" onclick="exportToExcel()">
+                    <i class="bi bi-file-earmark-excel"></i> Экспорт в Excel
+                </button>
+                <span class="badge bg-white text-tatneft-green">Татнефтеснаб</span>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 requests-table align-middle" id="requestsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="border-0" style="width: 5%;">№</th>
+                            <th class="border-0" style="width: 12%;">Заявитель</th>
+                            <th class="border-0" style="width: 8%;">Количество</th>
+                            <th class="border-0" style="width: 15%;">Номенклатура</th>
+                            <th class="border-0" style="width: 8%;">Ед. изм.</th>
+                            <th class="border-0" style="width: 10%;">План</th>
+                            <th class="border-0" style="width: 10%;">Статус</th>
+                            <th class="border-0" style="width: 10%;">Статья бюджета</th>
+                            <th class="border-0" style="width: 8%;">Макс. цена</th>
+                            <th class="border-0" style="width: 14%;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in requests %}
+                        <tr>
+                            <td class="align-middle">{{ req.id }}</td>
+                            <td class="align-middle">
+                                <strong>{{ req.requester.get_full_name }}</strong>
+                                <br><small class="text-muted">{{ req.requester.position|default:"" }}</small>
+                            </td>
+                            <td class="align-middle text-center">
+                                <span class="fw-bold">{{ req.quantity }}</span>
+                            </td>
+                            <td class="align-middle">
+                                {{ req.nomenclature }}
+                            </td>
+                            <td class="align-middle">{{ req.get_unit_display }}</td>
+                            <td class="align-middle">
+                                <span class="badge bg-info text-dark" style="font-size: 0.75em;">{{ req.get_plan_type_display }}</span>
+                            </td>
+                            <td class="align-middle">
+                                <span class="badge status-badge status-{{ req.status }}">
+                                    {{ req.get_status_display }}
+                                </span>
+                                {% if req.approver and req.status == 'pending' %}
+                                    <br><small class="text-muted">{{ req.approver.get_full_name|truncatechars:15 }}</small>
+                                {% endif %}
+                            </td>
+                            <td class="align-middle">
+                                <small>{{ req.get_budget_article_display }}</small>
+                            </td>
+                            <td class="align-middle">
+                                {% if req.max_price %}
+                                    {{ req.max_price }} ₽
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="align-middle">
+                                <div class="btn-group btn-group-sm">
+                                    <!-- Просмотр -->
+                                    <a href="{% url 'view_purchase_request' req.id %}" class="btn btn-outline-primary" title="Просмотр">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    
+                                    <!-- Редактирование (для автора в статусе draft/planned/rejected) -->
+                                    {% if user == req.requester and req.is_editable_by_requester %}
+                                    <a href="{% url 'edit_purchase_request' req.id %}" class="btn btn-outline-warning" title="Редактировать">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    {% endif %}
+                                    
+                                    <!-- Отправка на согласование (только для автора в статусе draft/planned/rejected) -->
+                                    {% if user == req.requester and req.is_editable_by_requester %}
+                                    <button type="button" class="btn btn-outline-success" title="Отправить на согласование" 
+                                            data-bs-toggle="modal" data-bs-target="#approvalModal{{ req.id }}">
+                                        <i class="bi bi-send-check"></i>
+                                    </button>
+                                    {% endif %}
+                                    
+                                    <!-- Согласование (для назначенного согласующего) -->
+                                    {% if user == req.approver and req.can_be_approved %}
+                                    <a href="{% url 'approve_request' req.id %}" class="btn btn-success" title="Согласовать">
+                                        <i class="bi bi-check-lg"></i>
+                                    </a>
+                                    {% endif %}
+                                    
+                                    <!-- Удаление -->
+                                    {% if user == req.requester or user.is_manager or user.is_staff %}
+                                    <form method="post" action="{% url 'delete_purchase_request' req.id %}" class="d-inline" 
+                                          onsubmit="return confirm('Вы уверены, что хотите удалить заявку №{{ req.id }}?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-outline-danger" title="Удалить">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Модальное окно для выбора согласующего -->
+                                {% if user == req.requester and req.is_editable_by_requester %}
+                                <div class="modal fade" id="approvalModal{{ req.id }}" tabindex="-1" aria-labelledby="approvalModalLabel{{ req.id }}" aria-hidden="true">
+                                    <div class="modal-dialog modal-sm">
+                                        <div class="modal-content">
+                                            <form method="post" action="{% url 'send_for_approval' req.id %}">
+                                                {% csrf_token %}
+                                                <div class="modal-header bg-success text-white">
+                                                    <h5 class="modal-title" id="approvalModalLabel{{ req.id }}">
+                                                        <i class="bi bi-send-check"></i> Отправка на согласование
+                                                    </h5>
+                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <p class="mb-2"><strong>Заявка №{{ req.id }}</strong></p>
+                                                    <p class="text-muted small mb-3">{{ req.nomenclature }}</p>
+                                                    <hr>
+                                                    <div class="mb-3">
+                                                        <label for="approver{{ req.id }}" class="form-label fw-bold">Выберите согласующего:</label>
+                                                        <select name="approver" id="approver{{ req.id }}" class="form-select" required>
+                                                            <option value="">-- Выберите --</option>
+                                                            {% for approver in available_approvers %}
+                                                            <option value="{{ approver.id }}" {% if approver.id == user.id %}style="background-color: #d1e7dd;"{% endif %}>
+                                                                {{ approver.get_full_name }} 
+                                                                {% if approver.id == user.id %}(Вы){% endif %}
+                                                                {% if approver.position %}
+                                                                    ({{ approver.position }})
+                                                                {% else %}
+                                                                    {% if approver.is_superuser %}(Администратор)
+                                                                    {% elif approver.is_staff %}(Персонал)
+                                                                    {% elif approver.is_manager %}(Руководитель)
+                                                                    {% endif %}
+                                                                {% endif %}
+                                                            </option>
+                                                            {% empty %}
+                                                            <option value="" disabled>Нет доступных согласующих</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                        {% if not is_privileged_user %}
+                                                        <div class="form-text text-muted mt-1">
+                                                            <i class="bi bi-info-circle"></i> Вы можете отправить только руководителю или администратору
+                                                        </div>
+                                                        {% else %}
+                                                        <div class="form-text text-muted mt-1">
+                                                            <i class="bi bi-info-circle"></i> Вы можете отправить на согласование себе или другому руководителю
+                                                        </div>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                                                    <button type="submit" class="btn btn-success">
+                                                        <i class="bi bi-send"></i> Отправить
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="10" class="text-center py-5">
+                                <div class="alert alert-info mb-0">
+                                    <i class="bi bi-info-circle fs-4 d-block mb-2"></i>
+                                    <strong>Заявки отсутствуют</strong><br>
+                                    В системе пока нет заявок на закупку.<br>
+                                    <small class="text-muted">Используйте кнопку "Создать заявку" для добавления.</small>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer bg-light text-muted small">
+            <div class="row">
+                <div class="col-md-6">
+                    <i class="bi bi-clock"></i> Последнее обновление: {% now "d.m.Y H:i" %}
+                </div>
+                <div class="col-md-6 text-end">
+                    <i class="bi bi-table"></i> Таблица заявок на закупку
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .requests-table th {
+        font-weight: 600;
+        color: var(--tatneft-green-dark);
+        white-space: nowrap;
+    }
+    
+    .status-badge {
+        padding: 0.5em 0.75em;
+        font-size: 0.85em;
+    }
+    
+    .status-draft { background-color: #6c757d; color: white; }
+    .status-planned { background-color: #0d6efd; color: white; }
+    .status-pending { background-color: #fd7e14; color: white; }
+    .status-approved { background-color: #198754; color: white; }
+    .status-rejected { background-color: #dc3545; color: white; }
+    .status-in_progress { background-color: #0dcaf0; color: white; }
+    .status-completed { background-color: #20c997; color: white; }
+    .status-cancelled { background-color: #adb5bd; color: white; }
+    
+    .requests-card {
+        border: none;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+    }
+    
+    /* Стили для кнопок действий */
+    .btn-group-sm > .btn, .btn-sm {
+        padding: 0.25rem 0.4rem;
+        font-size: 0.875rem;
+    }
+    
+    /* Увеличиваем z-index для модальных окон в таблице */
+    .modal {
+        z-index: 1055;
+    }
+    
+    /* Подсветка своего имени в списке */
+    option[style*="background-color"] {
+        font-weight: bold;
+    }
+</style>
+
+<!-- Подключаем библиотеку SheetJS для работы с Excel -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+<script>
+function exportToExcel() {
+    // Получаем таблицу
+    var table = document.getElementById("requestsTable");
+    
+    // Создаем рабочую книгу
+    var wb = XLSX.utils.book_new();
+    
+    // Подготавливаем данные для экспорта
+    var data = [];
+    
+    // Получаем заголовки
+    var headers = [];
+    var headerCells = table.querySelectorAll("thead th");
+    for (var i = 0; i < headerCells.length - 1; i++) { // -1 чтобы исключить колонку "Действия"
+        headers.push(headerCells[i].innerText.trim());
+    }
+    data.push(headers);
+    
+    // Получаем данные строк
+    var rows = table.querySelectorAll("tbody tr");
+    for (var i = 0; i < rows.length; i++) {
+        var rowData = [];
+        var cells = rows[i].querySelectorAll("td");
+        
+        // Пропускаем строку с сообщением "Заявки отсутствуют"
+        if (cells.length < 9) continue;
+        
+        for (var j = 0; j < cells.length - 1; j++) { // -1 чтобы исключить колонку "Действия"
+            var cellText = cells[j].innerText.trim();
+            // Убираем лишние переносы строк
+            cellText = cellText.replace(/\n/g, " ").replace(/\s+/g, " ");
+            rowData.push(cellText);
+        }
+        data.push(rowData);
+    }
+    
+    // Создаем лист из данных
+    var ws = XLSX.utils.aoa_to_sheet(data);
+    
+    // Настраиваем ширину колонок
+    ws['!cols'] = [
+        {wch: 8},   // №
+        {wch: 25},  // Заявитель
+        {wch: 12},  // Количество
+        {wch: 30},  // Номенклатура
+        {wch: 10},  // Ед. изм.
+        {wch: 20},  // План
+        {wch: 15},  // Статус
+        {wch: 18},  // Статья бюджета
+        {wch: 15}   // Макс. цена
+    ];
+    
+    // Добавляем стили для заголовков (зеленый фон Татнефти)
+    var range = XLSX.utils.decode_range(ws['!ref']);
+    for (var C = range.s.c; C <= range.e.c; ++C) {
+        var cellAddress = XLSX.utils.encode_cell({r: 0, c: C});
+        if (!ws[cellAddress]) continue;
+        
+        // Задаем стиль для заголовка
+        ws[cellAddress].s = {
+            font: {
+                bold: true,
+                color: {rgb: "FFFFFF"},
+                sz: 12
+            },
+            fill: {
+                fgColor: {rgb: "008F39"},
+                patternType: "solid"
+            },
+            alignment: {
+                horizontal: "center",
+                vertical: "center",
+                wrapText: true
+            },
+            border: {
+                top: {style: "thin", color: {rgb: "000000"}},
+                bottom: {style: "thin", color: {rgb: "000000"}},
+                left: {style: "thin", color: {rgb: "000000"}},
+                right: {style: "thin", color: {rgb: "000000"}}
+            }
+        };
+    }
+    
+    // Добавляем стили для данных
+    for (var R = 1; R <= range.e.r; ++R) {
+        for (var C = range.s.c; C <= range.e.c; ++C) {
+            var cellAddress = XLSX.utils.encode_cell({r: R, c: C});
+            if (!ws[cellAddress]) continue;
+            
+            // Базовый стиль для ячеек данных
+            ws[cellAddress].s = {
+                alignment: {
+                    horizontal: C === 0 ? "center" : "left",
+                    vertical: "center",
+                    wrapText: true
+                },
+                border: {
+                    top: {style: "thin", color: {rgb: "CCCCCC"}},
+                    bottom: {style: "thin", color: {rgb: "CCCCCC"}},
+                    left: {style: "thin", color: {rgb: "CCCCCC"}},
+                    right: {style: "thin", color: {rgb: "CCCCCC"}}
+                }
+            };
+            
+            // Выравнивание для числовых колонок
+            if (C === 2 || C === 8) { // Количество и Макс. цена
+                ws[cellAddress].s.alignment.horizontal = "right";
+            }
+        }
+    }
+    
+    // Закрепляем первую строку (заголовки)
+    ws['!freeze'] = {
+        xSplit: 0,
+        ySplit: 1,
+        topLeftCell: {r: 1, c: 0},
+        activePane: "bottomLeft"
+    };
+    
+    // Добавляем фильтры
+    ws['!autofilter'] = {
+        ref: ws['!ref']
+    };
+    
+    // Добавляем лист в книгу
+    XLSX.utils.book_append_sheet(wb, ws, "Заявки на закупку");
+    
+    // Генерируем имя файла с текущей датой
+    var today = new Date();
+    var dateStr = today.getFullYear() + "-" + 
+                  String(today.getMonth() + 1).padStart(2, '0') + "-" + 
+                  String(today.getDate()).padStart(2, '0');
+    var fileName = "Заявки_на_закупку_" + dateStr + ".xlsx";
+    
+    // Сохраняем файл
+    XLSX.writeFile(wb, fileName);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,267 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Главная</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'contract_list' %}">Договоры</a></li>
+                    <li class="breadcrumb-item active">Договор №{{ contract.id }}</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="page-title">{{ contract.name }}</h2>
+                <span class="badge bg-{{ contract.get_status_display_color }} fs-5">
+                    {{ contract.get_status_display }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Кнопки действий -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="btn-group" role="group">
+                <a href="{% url 'contract_list' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Назад к списку
+                </a>
+                
+                {% if can_edit %}
+                <a href="{% url 'edit_contract' contract.id %}" class="btn btn-warning ms-2">
+                    <i class="bi bi-pencil"></i> Редактировать
+                </a>
+                {% endif %}
+                
+                {% if contract.is_editable %}
+                <button type="button" class="btn btn-success ms-2" data-bs-toggle="modal" data-bs-target="#approverModal">
+                    <i class="bi bi-send-check"></i> Отправить на согласование
+                </button>
+                {% endif %}
+                
+                {% if can_approve %}
+                <a href="{% url 'approve_contract' contract.id %}" class="btn btn-primary ms-2">
+                    <i class="bi bi-check-circle"></i> Перейти к согласованию
+                </a>
+                {% endif %}
+                
+                {% if is_creator or user.is_manager or user.is_staff %}
+                <form method="post" action="{% url 'delete_contract' contract.id %}" class="d-inline ms-2" 
+                      onsubmit="return confirm('Вы уверены, что хотите удалить договор \"{{ contract.name }}\"?');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Удалить
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно выбора согласующего -->
+    {% if contract.is_editable %}
+    <div class="modal fade" id="approverModal" tabindex="-1" aria-labelledby="approverModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="post" action="{% url 'send_contract_for_approval' contract.id %}">
+                    {% csrf_token %}
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title" id="approverModalLabel">Отправка на согласование</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-2"><strong>{{ contract.name }}</strong></p>
+                        <p class="text-muted small mb-3">{{ contract.supplier.name }}</p>
+                        <div class="mb-3">
+                            <label class="form-label">Выберите согласующего:</label>
+                            <select name="approver" class="form-select" required>
+                                <option value="">-- Выберите --</option>
+                                {% for approver in available_approvers %}
+                                <option value="{{ approver.id }}">
+                                    {{ approver.get_full_name }} 
+                                    {% if approver.position %}({{ approver.position }}){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-send"></i> Отправить
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <!-- Основная информация -->
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header tatneft-header-green">
+                    <h5 class="mb-0 text-white"><i class="bi bi-info-circle"></i> Основная информация</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Название договора:</label>
+                        <div class="col-sm-8">{{ contract.name }}</div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Сумма договора:</label>
+                        <div class="col-sm-8">
+                            <span class="fw-bold text-tatneft-green fs-5">{{ contract.contract_amount|floatformat:2 }} ₽</span>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Дата договора:</label>
+                        <div class="col-sm-8">{{ contract.contract_date|date:"d.m.Y" }}</div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Дата окончания:</label>
+                        <div class="col-sm-8">
+                            <span class="{% if contract.end_date < today %}text-danger{% elif contract.end_date <= today_plus_30 %}text-warning{% endif %}">
+                                {{ contract.end_date|date:"d.m.Y" }}
+                            </span>
+                            {% if contract.end_date < today %}
+                                <span class="badge bg-danger ms-2">Просрочен</span>
+                            {% elif contract.end_date <= today_plus_30 %}
+                                <span class="badge bg-warning text-dark ms-2">Истекает</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Ответственный:</label>
+                        <div class="col-sm-8">
+                            {% if contract.responsible %}
+                                {{ contract.responsible.get_full_name }}
+                                {% if contract.responsible.position %}
+                                    <br><small class="text-muted">{{ contract.responsible.position }}</small>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">Не указан</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Статус:</label>
+                        <div class="col-sm-8">
+                            <span class="badge bg-{{ contract.get_status_display_color }} fs-6">
+                                {{ contract.get_status_display }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    {% if contract.comment %}
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Комментарий:</label>
+                        <div class="col-sm-8">{{ contract.comment|linebreaks }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if contract.approver and contract.status == 'pending' %}
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Назначенный согласующий:</label>
+                        <div class="col-sm-8">{{ contract.approver.get_full_name }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Связи -->
+            <div class="card mb-4">
+                <div class="card-header tatneft-header-green">
+                    <h5 class="mb-0 text-white"><i class="bi bi-link"></i> Связи</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Компания/Поставщик:</label>
+                        <div class="col-sm-8">
+                            <a href="{% url 'view_supplier' contract.supplier.id %}" class="text-decoration-none fw-bold">
+                                {{ contract.supplier.name }}
+                            </a>
+                            {% if contract.supplier.inn %}
+                                <br><small class="text-muted">ИНН: {{ contract.supplier.inn }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Коммерческое предложение:</label>
+                        <div class="col-sm-8">
+                            {% if contract.commercial_proposal %}
+                                <a href="{{ contract.commercial_proposal.url }}" target="_blank" class="btn btn-outline-primary">
+                                    <i class="bi bi-file-earmark-text"></i> Открыть файл
+                                </a>
+                                <small class="text-muted ms-2">{{ contract.commercial_proposal.name }}</small>
+                            {% else %}
+                                <span class="text-muted">Не прикреплено</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Боковая панель -->
+        <div class="col-md-4">
+            <!-- Документ договора -->
+            <div class="card mb-4">
+                <div class="card-header tatneft-header">
+                    <h5 class="mb-0 text-white"><i class="bi bi-file-earmark"></i> Документ договора</h5>
+                </div>
+                <div class="card-body">
+                    {% if contract.contract_document %}
+                        <div class="text-center mb-3">
+                            <i class="bi bi-file-earmark-text fs-1 text-tatneft-green"></i>
+                        </div>
+                        <a href="{{ contract.contract_document.url }}" target="_blank" class="btn btn-tatneft-primary w-100 mb-2">
+                            <i class="bi bi-eye"></i> Просмотреть документ
+                        </a>
+                        <p class="text-muted small text-center mb-0">{{ contract.contract_document.name }}</p>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-file-earmark-x fs-1 text-muted"></i>
+                            <p class="text-muted mt-2 mb-0">Документ не прикреплен</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Служебная информация -->
+            <div class="card">
+                <div class="card-header tatneft-header">
+                    <h5 class="mb-0 text-white"><i class="bi bi-clock-history"></i> История</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="fw-bold text-muted">Дата создания:</label>
+                        <p class="mb-0">{{ contract.created_at|date:"d.m.Y H:i" }}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="fw-bold text-muted">Дата обновления:</label>
+                        <p class="mb-0">{{ contract.updated_at|date:"d.m.Y H:i" }}</p>
+                    </div>
+                    
+                    {% if contract.created_by %}
+                    <div class="mb-0">
+                        <label class="fw-bold text-muted">Кем создан:</label>
+                        <p class="mb-0">{{ contract.created_by.get_full_name }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

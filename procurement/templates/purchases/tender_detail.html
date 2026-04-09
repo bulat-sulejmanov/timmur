@@ -1,0 +1,292 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Главная</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'tender_list' %}">Конкурсы</a></li>
+                    <li class="breadcrumb-item active">Конкурс №{{ tender.id }}</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="page-title">{{ tender.name }}</h2>
+                <span class="badge 
+                    {% if tender.status == 'active' %}bg-success
+                    {% elif tender.status == 'completed' %}bg-info
+                    {% elif tender.status == 'closed' %}bg-secondary
+                    {% elif tender.status == 'cancelled' %}bg-danger
+                    {% else %}bg-warning text-dark{% endif %} fs-5">
+                    {{ tender.get_status_display }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Кнопки действий -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="btn-group" role="group">
+                <a href="{% url 'tender_list' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Назад к списку
+                </a>
+                
+                {% if can_edit and not tender.tasks_sent and tender.status != 'completed' and tender.status != 'cancelled' %}
+                <a href="{% url 'edit_tender' tender.id %}" class="btn btn-warning ms-2">
+                    <i class="bi bi-pencil"></i> Редактировать
+                </a>
+                {% endif %}
+                
+                {% if can_edit and not tender.tasks_sent %}
+                <form method="post" action="{% url 'delete_tender' tender.id %}" class="d-inline ms-2" 
+                      onsubmit="return confirm('Вы уверены, что хотите удалить этот конкурс?');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Удалить
+                    </button>
+                </form>
+                {% endif %}
+
+                <!-- НОВАЯ КНОПКА: Просмотр предложений -->
+                {% if can_view_proposals %}
+                <a href="{% url 'tender_proposals_list' tender.id %}" class="btn btn-info ms-2">
+                    <i class="bi bi-people"></i> Предложения ({{ proposals_count }})
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Информация о победителе -->
+    {% if winner %}
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card border-success">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-trophy"></i> Победитель конкурса</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h4 class="text-success mb-1">{{ winner.user.get_full_name }}</h4>
+                            <p class="mb-0 text-muted">{{ winner.user.position|default:"" }}</p>
+                        </div>
+                        <div class="col-md-4 text-md-end">
+                            <h3 class="text-tatneft-green mb-0">{{ winner.total_amount|floatformat:2 }} ₽</h3>
+                            <small class="text-muted">Общая сумма предложения</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <!-- Основная информация -->
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header tatneft-header-green">
+                    <h5 class="mb-0 text-white"><i class="bi bi-info-circle"></i> Основная информация</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Название:</label>
+                        <div class="col-sm-8">{{ tender.name }}</div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Описание:</label>
+                        <div class="col-sm-8">{{ tender.description|default:"<span class='text-muted'>Не указано</span>"|safe }}</div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Место поставки:</label>
+                        <div class="col-sm-8">{{ tender.place_of_delivery|default:"<span class='text-muted'>Не указано</span>"|safe }}</div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Срок поставки:</label>
+                        <div class="col-sm-8">{{ tender.delivery_term|default:"<span class='text-muted'>Не указан</span>"|safe }}</div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Проводить торги:</label>
+                        <div class="col-sm-8">{{ tender.get_is_trading_display }}</div>
+                    </div>
+                    
+                    {% if tender.min_step %}
+                    <div class="row mb-3">
+                        <label class="col-sm-4 fw-bold">Минимальный шаг:</label>
+                        <div class="col-sm-8">{{ tender.min_step }} ₽</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Позиции конкурса -->
+            <div class="card mb-4">
+                <div class="card-header tatneft-header-green d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 text-white"><i class="bi bi-list-ol"></i> Позиции конкурса</h5>
+                    <span class="badge bg-white text-tatneft-green">{{ items.count }} позиций</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>№</th>
+                                    <th>Номенклатура</th>
+                                    <th>Количество</th>
+                                    <th>Начальная цена</th>
+                                    <th>Приложение</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in items %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ item.purchase_request.nomenclature }}</td>
+                                    <td>{{ item.quantity }} {{ item.purchase_request.get_unit_display }}</td>
+                                    <td>{{ item.start_price }} ₽</td>
+                                    <td>
+                                        {% if item.attachment %}
+                                        <a href="{{ item.attachment.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-file-earmark"></i> Открыть
+                                        </a>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">
+                                        <i class="bi bi-info-circle fs-4 d-block mb-2"></i>
+                                        Нет позиций в конкурсе
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Боковая панель -->
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header tatneft-header">
+                    <h5 class="mb-0 text-white"><i class="bi bi-clock"></i> Сроки</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="fw-bold text-muted">Дата начала:</label>
+                        <p class="mb-0">{{ tender.start_date|date:"d.m.Y H:i" }}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="fw-bold text-muted">Срок подачи предложений:</label>
+                        <p class="mb-0">{{ tender.submission_deadline|date:"d.m.Y H:i" }}</p>
+                    </div>
+                    
+                    {% if tender.status == 'active' %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <small>Конкурс активен. Задачи отправлены пользователям.</small>
+                    </div>
+                    {% elif tender.status == 'preparation' %}
+                    <div class="alert alert-warning">
+                        <i class="bi bi-clock"></i>
+                        <small>Конкурс в стадии подготовки. Задачи будут отправлены автоматически при наступлении даты начала.</small>
+                    </div>
+                    {% elif tender.status == 'closed' %}
+                    <div class="alert alert-secondary">
+                        <i class="bi bi-lock"></i>
+                        <small>Конкурс закрыт. Прием заявок завершен.</small>
+                    </div>
+                    {% elif tender.status == 'completed' %}
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle"></i>
+                        <small>Конкурс завершен. Победитель выбран.</small>
+                    </div>
+                    {% endif %}
+
+                    <!-- НОВЫЙ БЛОК: Статистика предложений -->
+                    {% if can_view_proposals %}
+                    <hr>
+                    <div class="d-grid">
+                        <a href="{% url 'tender_proposals_list' tender.id %}" class="btn btn-info">
+                            <i class="bi bi-people"></i> Просмотреть предложения ({{ proposals_count }})
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header tatneft-header">
+                    <h5 class="mb-0 text-white"><i class="bi bi-person"></i> Контакты</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="fw-bold text-muted">Контактное лицо:</label>
+                        <p class="mb-0">
+                            {% if tender.contact_person %}
+                                {{ tender.contact_person.get_full_name }}
+                            {% else %}
+                                <span class="text-muted">Не указано</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="fw-bold text-muted">Создатель:</label>
+                        <p class="mb-0">
+                            {% if tender.created_by %}
+                                {{ tender.created_by.get_full_name }}
+                            {% else %}
+                                <span class="text-muted">Не указан</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Документы -->
+            <div class="card">
+                <div class="card-header tatneft-header">
+                    <h5 class="mb-0 text-white"><i class="bi bi-file-earmark-text"></i> Документы</h5>
+                </div>
+                <div class="card-body">
+                    {% if tender.procurement_docs %}
+                    <div class="mb-3">
+                        <a href="{{ tender.procurement_docs.url }}" target="_blank" class="btn btn-outline-primary w-100">
+                            <i class="bi bi-file-earmark-pdf"></i> Закупочная документация
+                        </a>
+                    </div>
+                    {% endif %}
+                    
+                    {% if tender.price_request_doc %}
+                    <div class="mb-3">
+                        <a href="{{ tender.price_request_doc.url }}" target="_blank" class="btn btn-outline-primary w-100">
+                            <i class="bi bi-file-earmark-text"></i> Запрос КП
+                        </a>
+                    </div>
+                    {% endif %}
+                    
+                    {% if not tender.procurement_docs and not tender.price_request_doc %}
+                    <p class="text-muted mb-0 text-center">
+                        <i class="bi bi-info-circle"></i> Документы не прикреплены
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

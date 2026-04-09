@@ -1,0 +1,358 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <!-- Приветствие -->
+    <div class="welcome-container text-center mt-4 mb-5">
+        <h1 class="display-5 text-tatneft-green">Добро пожаловать в ИС ТАТНЕФТЕСНАБ</h1>
+        <p class="lead mt-2">Информационная система управления закупками</p>
+        <div class="mt-3">
+            <div class="accent-line mx-auto"></div>
+        </div>
+    </div>
+
+    <!-- Статистика задач - простые блоки с числами -->
+    <div class="row mb-5">
+        <div class="col-md-12">
+            <h4 class="text-tatneft-green mb-3"><i class="bi bi-check2-square"></i> Мои задачи</h4>
+        </div>
+        <div class="col-md-6">
+            <div class="card task-card border-success h-100">
+                <div class="card-body text-center">
+                    <div class="task-icon bg-success">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                    <h2 class="task-number text-success">{{ completed_tasks_count|default:0 }}</h2>
+                    <p class="task-label">Выполненных задач</p>
+                    <small class="text-muted">Завершено в этом месяце</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card task-card border-warning h-100">
+                <div class="card-body text-center">
+                    <div class="task-icon bg-warning">
+                        <i class="bi bi-hourglass-split"></i>
+                    </div>
+                    <h2 class="task-number text-warning">{{ pending_tasks_count|default:0 }}</h2>
+                    <p class="task-label">Активных задач</p>
+                    <small class="text-muted">Требуют внимания</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Диаграммы в ряд -->
+    <div class="row mb-5">
+        <!-- Круговая диаграмма заявок -->
+        <div class="col-md-6">
+            <div class="card chart-card h-100">
+                <div class="card-header tatneft-header-green">
+                    <h5 class="mb-0 text-white"><i class="bi bi-pie-chart"></i> Заявки на закупку</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="requestsPieChart"></canvas>
+                    </div>
+                    <div class="chart-legend mt-3">
+                        <div class="d-flex justify-content-around">
+                            <span class="badge bg-primary">Запланировано: {{ planned_requests|default:0 }}</span>
+                            <span class="badge bg-success">Согласовано: {{ approved_requests|default:0 }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Столбчатая диаграмма договоров -->
+        <div class="col-md-6">
+            <div class="card chart-card h-100">
+                <div class="card-header tatneft-header-green">
+                    <h5 class="mb-0 text-white"><i class="bi bi-bar-chart"></i> Договоры</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="contractsBarChart"></canvas>
+                    </div>
+                    <div class="chart-legend mt-3">
+                        <div class="d-flex justify-content-around flex-wrap">
+                            <span class="badge bg-secondary">Черновики: {{ draft_contracts|default:0 }}</span>
+                            <span class="badge bg-warning text-dark">На согласовании: {{ pending_contracts|default:0 }}</span>
+                            <span class="badge bg-info">Действующие: {{ active_contracts|default:0 }}</span>
+                            <span class="badge bg-success">Выполнено: {{ completed_contracts|default:0 }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Быстрые ссылки -->
+    <div class="row">
+        <div class="col-md-12">
+            <h4 class="text-tatneft-green mb-3"><i class="bi bi-lightning"></i> Быстрые действия</h4>
+        </div>
+        <div class="col-md-3 mb-3">
+            <a href="{% url 'purchase_request_list' %}" class="card quick-link-card text-decoration-none">
+                <div class="card-body text-center">
+                    <i class="bi bi-file-earmark-text fs-1 text-tatneft-green"></i>
+                    <h6 class="mt-2">Заявки на закупку</h6>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3 mb-3">
+            <a href="{% url 'contract_list' %}" class="card quick-link-card text-decoration-none">
+                <div class="card-body text-center">
+                    <i class="bi bi-file-text fs-1 text-tatneft-green"></i>
+                    <h6 class="mt-2">Договоры</h6>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3 mb-3">
+            <a href="{% url 'my_tasks' %}" class="card quick-link-card text-decoration-none">
+                <div class="card-body text-center">
+                    <i class="bi bi-check2-square fs-1 text-tatneft-green"></i>
+                    <h6 class="mt-2">Мои задачи</h6>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-3 mb-3">
+            <a href="{% url 'tender_list' %}" class="card quick-link-card text-decoration-none">
+                <div class="card-body text-center">
+                    <i class="bi bi-trophy fs-1 text-tatneft-green"></i>
+                    <h6 class="mt-2">Конкурсы</h6>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Подключаем Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+/* Карточки задач */
+.task-card {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.task-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+}
+
+.task-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 2.5rem;
+    color: white;
+}
+
+.task-number {
+    font-size: 3.5rem;
+    font-weight: 700;
+    margin-bottom: 10px;
+    line-height: 1;
+}
+
+.task-label {
+    font-size: 1.2rem;
+    color: #6c757d;
+    margin-bottom: 5px;
+}
+
+/* Карточки диаграмм */
+.chart-card {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+/* Быстрые ссылки */
+.quick-link-card {
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    color: #333;
+}
+
+.quick-link-card:hover {
+    border-color: var(--tatneft-green);
+    transform: translateY(-3px);
+    box-shadow: 0 4px 15px rgba(0,143,57,0.15);
+}
+
+.quick-link-card:hover i {
+    color: var(--tatneft-green-dark) !important;
+}
+
+/* Welcome container */
+.welcome-container {
+    padding: 2rem;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    border-top: 5px solid var(--tatneft-green);
+}
+
+.accent-line {
+    height: 4px;
+    width: 100px;
+    background: linear-gradient(90deg, var(--tatneft-green) 0%, var(--tatneft-red) 100%);
+    border-radius: 2px;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Цвета Татнефть
+    const tatneftGreen = '#008F39';
+    const tatneftGreenDark = '#006B2B';
+    const tatneftRed = '#E31E24';
+    const tatneftGreenLight = '#00B44B';
+
+    // Данные для круговой диаграммы заявок
+    const plannedRequests = {{ planned_requests|default:0 }};
+    const approvedRequests = {{ approved_requests|default:0 }};
+
+    const requestsCtx = document.getElementById('requestsPieChart').getContext('2d');
+    new Chart(requestsCtx, {
+        type: 'pie',
+        data: {
+            labels: ['Запланировано', 'Согласовано'],
+            datasets: [{
+                data: [plannedRequests, approvedRequests],
+                backgroundColor: [
+                    '#0d6efd',  // Синий для запланированных
+                    tatneftGreen  // Зеленый Татнефти для согласованных
+                ],
+                borderColor: '#ffffff',
+                borderWidth: 3,
+                hoverOffset: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            label += context.parsed;
+                            let total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            let percentage = ((context.parsed / total) * 100).toFixed(1);
+                            label += ' (' + percentage + '%)';
+                            return label;
+                        }
+                    }
+                }
+            },
+            animation: {
+                animateRotate: true,
+                animateScale: true
+            }
+        }
+    });
+
+    // Данные для столбчатой диаграммы договоров
+    const draftContracts = {{ draft_contracts|default:0 }};
+    const pendingContracts = {{ pending_contracts|default:0 }};
+    const activeContracts = {{ active_contracts|default:0 }};
+    const completedContracts = {{ completed_contracts|default:0 }};
+
+    const contractsCtx = document.getElementById('contractsBarChart').getContext('2d');
+    new Chart(contractsCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Черновики', 'На согласовании', 'Действующие', 'Выполнено'],
+            datasets: [{
+                label: 'Количество договоров',
+                data: [draftContracts, pendingContracts, activeContracts, completedContracts],
+                backgroundColor: [
+                    '#6c757d',  // Серый - черновики
+                    '#ffc107',  // Желтый - на согласовании
+                    '#0dcaf0',  // Голубой - действующие
+                    tatneftGreen  // Зеленый Татнефти - выполнено
+                ],
+                borderColor: [
+                    '#495057',
+                    '#ff9800',
+                    '#0aa2c0',
+                    tatneftGreenDark
+                ],
+                borderWidth: 2,
+                borderRadius: 8,
+                borderSkipped: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Количество: ' + context.parsed.y;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1,
+                        font: {
+                            size: 12
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0,0,0,0.1)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        font: {
+                            size: 11
+                        }
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            },
+            animation: {
+                duration: 1000,
+                easing: 'easeOutQuart'
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

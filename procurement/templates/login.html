@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5">
+        <div class="card login-card shadow">
+            <div class="card-header tatneft-header text-center">
+                <div class="login-logo mb-3">
+                    <span class="logo-tn">ТН</span>
+                </div>
+                <h4 class="mb-0">Авторизация</h4>
+                <small class="text-white-50">ИС ТАТНЕФТЕСНАБ</small>
+            </div>
+            <div class="card-body p-4">
+                {% if form.errors %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Ошибка входа:</strong> Неверное имя пользователя или пароль.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Закрыть"></button>
+                </div>
+                {% endif %}
+                
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="id_username" class="form-label">Имя пользователя</label>
+                        <input type="text" name="username" class="form-control" id="id_username" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="id_password" class="form-label">Пароль</label>
+                        <input type="password" name="password" class="form-control" id="id_password" required>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-tatneft-primary btn-lg">
+                            Войти
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-center bg-light">
+                <small class="text-muted">Система управления закупками</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

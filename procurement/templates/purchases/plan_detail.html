@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Главная</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'purchase_plans_list' %}">Планы закупок</a></li>
+                    <li class="breadcrumb-item active">{{ plan_name }}</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="page-title">{{ plan_name }}</h2>
+                <span class="badge bg-tatneft-green text-white">Всего позиций: {{ total_positions }}</span>
+            </div>
+            <p class="text-muted">Детальная информация о плане закупок</p>
+        </div>
+    </div>
+
+    <!-- Блок Основная информация -->
+    <div class="card mb-4">
+        <div class="card-header tatneft-header-green">
+            <h5 class="mb-0 text-white"><i class="bi bi-info-circle"></i> Основная информация</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold text-muted">Название плана:</label>
+                    <p class="form-control-plaintext">{{ plan_name }}</p>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold text-muted">Статус:</label>
+                    <p class="form-control-plaintext">
+                        <span class="badge {% if plan_status == 'Полностью согласован' %}bg-success{% elif plan_status == 'На согласовании' %}bg-warning text-dark{% elif plan_status == 'Формируется' %}bg-secondary{% else %}bg-info{% endif %} fs-6">
+                            {{ plan_status }}
+                        </span>
+                    </p>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold text-muted">Ответственный:</label>
+                    <p class="form-control-plaintext">
+                        {% for resp in responsible_list %}
+                            {{ resp.get_full_name }}{% if not forloop.last %}, {% endif %}
+                        {% empty %}
+                            Не указан
+                        {% endfor %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Блок Позиции плана -->
+    <div class="card mb-4">
+        <div class="card-header tatneft-header-green d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 text-white"><i class="bi bi-list-check"></i> Позиции плана</h5>
+            <div>
+                <span class="badge bg-success me-2">Согласовано: {{ approved_count }}</span>
+                <span class="badge bg-warning text-dark">Не согласовано: {{ pending_count }}</span>
+            </div>
+        </div>
+        <div class="card-body">
+            
+            <!-- Не согласованные -->
+            {% if not_approved_requests %}
+            <h6 class="text-danger mb-3"><i class="bi bi-clock-history"></i> Не согласованные</h6>
+            <div class="table-responsive mb-4">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Позиция</th>
+                            <th>Ед. изм.</th>
+                            <th>Количество</th>
+                            <th>Макс. цена</th>
+                            <th>Статья бюджета</th>
+                            <th>Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in not_approved_requests %}
+                        <tr>
+                            <td>{{ req.nomenclature }}</td>
+                            <td>{{ req.get_unit_display }}</td>
+                            <td>{{ req.quantity }}</td>
+                            <td>{% if req.max_price %}{{ req.max_price }} ₽{% else %}-{% endif %}</td>
+                            <td>{{ req.get_budget_article_display }}</td>
+                            <td>
+                                <span class="badge bg-warning text-dark">{{ req.get_status_display }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+            <!-- Согласованные -->
+            {% if approved_requests %}
+            <h6 class="text-success mb-3"><i class="bi bi-check-circle"></i> Согласованные</h6>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Позиция</th>
+                            <th>Ед. изм.</th>
+                            <th>Количество</th>
+                            <th>Макс. цена</th>
+                            <th>Статья бюджета</th>
+                            <th>Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in approved_requests %}
+                        <tr>
+                            <td>{{ req.nomenclature }}</td>
+                            <td>{{ req.get_unit_display }}</td>
+                            <td>{{ req.quantity }}</td>
+                            <td>{% if req.max_price %}{{ req.max_price }} ₽{% else %}-{% endif %}</td>
+                            <td>{{ req.get_budget_article_display }}</td>
+                            <td>
+                                <span class="badge bg-success">{{ req.get_status_display }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+            {% if not approved_requests and not not_approved_requests %}
+            <div class="alert alert-info mb-0">
+                <i class="bi bi-info-circle"></i> В плане пока нет позиций
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <a href="{% url 'purchase_plans_list' %}" class="btn btn-tatneft-outline">
+            <i class="bi bi-arrow-left"></i> Вернуться к списку планов
+        </a>
+    </div>
+</div>
+{% endblock %}

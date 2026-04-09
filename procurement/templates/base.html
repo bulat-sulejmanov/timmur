@@ -1,0 +1,177 @@
+<!-- base.html -->
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ТАТНЕФТЕСНАБ - Информационная система закупок</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <!-- Навигационная панель в стиле ТАТНЕФТЕСНАБ -->
+    <nav class="navbar navbar-expand-lg navbar-dark tatneft-navbar">
+        <div class="container-fluid">
+            <a class="navbar-brand d-flex align-items-center" href="{% url 'dashboard' %}">
+                <div class="logo-container me-2">
+                    <span class="logo-text">ТН</span>
+                </div>
+                <span class="brand-text">ТАТНЕФТЕСНАБ</span>
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                {% if user.is_authenticated %}
+                <!-- Навигационное меню -->
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'dashboard' %}">
+                            <i class="bi bi-house-door"></i> Главная
+                        </a>
+                    </li>
+                    
+                    <!-- КНОПКА ЗАКУПКИ С ВЫПАДАЮЩИМ СПИСКОМ -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="purchasesDropdown" role="button" 
+                           data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-cart4"></i> Закупки
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="purchasesDropdown">
+                            <!-- КНОПКА ЗАЯВКИ НА ЗАКУПКУ -->
+                            <li>
+                                <a class="dropdown-item" href="{% url 'purchase_request_list' %}">
+                                    <i class="bi bi-file-earmark-text"></i> Заявки на закупку
+                                </a>
+                            </li>
+                            <!-- КНОПКА ПЛАНЫ ЗАКУПОК -->
+                            <li>
+                                <a class="dropdown-item" href="{% url 'purchase_plans_list' %}">
+                                    <i class="bi bi-calendar-check"></i> Планы закупок
+                                </a>
+                            </li>
+                            <!-- КНОПКА КОНКУРСЫ -->
+                            <li>
+                                <a class="dropdown-item" href="{% url 'tender_list' %}">
+                                    <i class="bi bi-trophy"></i> Конкурсы
+                                </a>
+                            </li>
+                            <!-- КНОПКА ПОСТАВЩИКИ -->
+                            <li>
+                                <a class="dropdown-item" href="{% url 'supplier_list' %}">
+                                    <i class="bi bi-truck"></i> Поставщики
+                                </a>
+                            </li>
+                            <!-- КНОПКА ДОГОВОРЫ (НОВОЕ) -->
+                            <li>
+                                <a class="dropdown-item" href="{% url 'contract_list' %}">
+                                    <i class="bi bi-file-text"></i> Договоры
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <!-- КНОПКА МОИ ЗАДАЧИ -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'my_tasks' %}">
+                            <i class="bi bi-check2-square"></i> Мои задачи
+                        </a>
+                    </li>
+                    
+                    <!-- КНОПКА УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯМИ (ТОЛЬКО ДЛЯ МЕНЕДЖЕРА) -->
+                    {% if user.is_manager or user.is_staff or user.is_superuser %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'user_list' %}">
+                            <i class="bi bi-people"></i> Пользователи
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+
+                <div class="navbar-nav ms-auto">
+                    <!-- Dropdown для профиля -->
+                    <div class="nav-item dropdown profile-dropdown">
+                        <button class="btn btn-profile dropdown-toggle" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            {% if user.photo %}
+                                <img src="{{ user.photo.url }}" alt="Фото" class="profile-thumb">
+                            {% else %}
+                                <div class="profile-thumb-placeholder">
+                                    <span>{{ user.first_name|first|default:user.username|first }}</span>
+                                </div>
+                            {% endif %}
+                            <span class="ms-2">Мой профиль</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end profile-menu" aria-labelledby="profileDropdown">
+                            {% if user.is_manager or user.is_staff %}
+                            <li>
+                                <a class="dropdown-item" href="/admin/">
+                                    <i class="bi bi-gear-fill"></i> Администрирование
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            {% endif %}
+                            <li>
+                                <a class="dropdown-item" href="{% url 'profile_detail' %}">
+                                    <i class="bi bi-person"></i> Мой профиль
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{% url 'profile_edit' %}">
+                                    <i class="bi bi-pencil-square"></i> Редактировать
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <!-- БЕЗОПАСНЫЙ ВЫХОД ЧЕРЕЗ POST-ФОРМУ -->
+                            <li>
+                                <form method="post" action="{% url 'logout' %}" class="m-0 p-0">
+                                    {% csrf_token %}
+                                    <button type="submit" class="dropdown-item text-danger border-0 bg-transparent w-100 text-start">
+                                        <i class="bi bi-box-arrow-right"></i> Выйти
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Основной контент -->
+    <main class="container mt-4">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+        
+        {% block content %}
+        <!-- Здесь будет контент страницы -->
+        <div class="welcome-container text-center mt-5">
+            <h1 class="display-4 text-tatneft-green">Добро пожаловать в ИС ТАТНЕФТЕСНАБ</h1>
+            <p class="lead mt-3">Информационная система управления закупками</p>
+            <div class="mt-4">
+                <div class="accent-line"></div>
+            </div>
+        </div>
+        {% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer mt-5 py-3 tatneft-footer">
+        <div class="container text-center">
+            <span class="text-muted">© 2025 ПАО «ТАТНЕФТЬ». Управление «Татнефтеснаб». Все права защищены.</span>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+</body>
+</html>

@@ -1,0 +1,213 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Главная</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'my_tasks' %}">Мои задачи</a></li>
+                    <li class="breadcrumb-item active">Согласование заявки №{{ request_obj.id }}</li>
+                </ol>
+            </nav>
+            <h2 class="page-title">Согласование заявки №{{ request_obj.id }}</h2>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="row">
+        <!-- Левая колонка - данные заявки (только для просмотра) -->
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header tatneft-header-green text-white">
+                    <h5 class="mb-0"><i class="bi bi-file-text"></i> Данные заявки</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Номенклатура -->
+                    <div class="mb-3 row">
+                        <label class="col-sm-4 col-form-label fw-bold">Номенклатура:</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control-plaintext" value="{{ request_obj.nomenclature }}" readonly>
+                        </div>
+                    </div>
+                    
+                    <hr>
+
+                    <!-- Количество и ед.изм. -->
+                    <div class="mb-3 row">
+                        <label class="col-sm-4 col-form-label fw-bold">Количество:</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control-plaintext" 
+                                   value="{{ request_obj.quantity }} {{ request_obj.get_unit_display }}" readonly>
+                        </div>
+                    </div>
+
+                    <!-- Максимальная цена -->
+                    <div class="mb-3 row">
+                        <label class="col-sm-4 col-form-label fw-bold">Максимальная цена:</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control-plaintext" 
+                                   value="{% if request_obj.max_price %}{{ request_obj.max_price }} ₽{% else %}Не указана{% endif %}" readonly>
+                        </div>
+                    </div>
+
+                    <!-- План -->
+                    <div class="mb-3 row">
+                        <label class="col-sm-4 col-form-label fw-bold">План:</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control-plaintext" 
+                                   value="{{ request_obj.get_plan_type_display }}" readonly>
+                        </div>
+                    </div>
+
+                    <!-- Статья бюджета -->
+                    <div class="mb-3 row">
+                        <label class="col-sm-4 col-form-label fw-bold">Статья бюджета:</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control-plaintext" 
+                                   value="{{ request_obj.get_budget_article_display }}" readonly>
+                        </div>
+                    </div>
+
+                    <!-- Заявитель -->
+                    <div class="mb-3 row">
+                        <label class="col-sm-4 col-form-label fw-bold">Заявитель:</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control-plaintext" 
+                                   value="{{ request_obj.requester.get_full_name }} ({{ request_obj.requester.position|default:'должность не указана' }})" readonly>
+                        </div>
+                    </div>
+
+                    <!-- Дата создания -->
+                    <div class="mb-3 row">
+                        <label class="col-sm-4 col-form-label fw-bold">Дата создания:</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control-plaintext" 
+                                   value="{{ request_obj.created_at|date:'d.m.Y H:i' }}" readonly>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Описание -->
+                    <div class="mb-3 row">
+                        <label class="col-sm-4 col-form-label fw-bold">Описание:</label>
+                        <div class="col-sm-8">
+                            <textarea class="form-control" rows="3" readonly>{{ request_obj.description }}</textarea>
+                        </div>
+                    </div>
+
+                    <!-- Файл -->
+                    {% if request_obj.attachment %}
+                    <div class="mb-3 row">
+                        <label class="col-sm-4 col-form-label fw-bold">Вложение:</label>
+                        <div class="col-sm-8">
+                            <a href="{{ request_obj.attachment.url }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-file-earmark"></i> Открыть файл
+                            </a>
+                            <small class="text-muted ms-2">{{ request_obj.attachment.name }}</small>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- История отклонений (если была предыдущая доработка) -->
+            {% if request_obj.rejection_reason %}
+            <div class="card border-warning mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="bi bi-clock-history"></i> Предыдущие замечания</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning mb-0">
+                        {{ request_obj.rejection_reason|linebreaks }}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Правая колонка - форма согласования -->
+        <div class="col-md-4">
+            <div class="card sticky-top" style="top: 20px; z-index: 100;">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-check2-square"></i> Принятие решения</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="comment" class="form-label fw-bold">Комментарий:</label>
+                            <textarea class="form-control" id="comment" name="comment" rows="4" 
+                                      placeholder="Введите комментарий (обязателен при отправке на доработку или отклонении)"></textarea>
+                            <div class="form-text text-muted">При согласовании комментарий необязателен</div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="d-grid gap-2">
+                            <!-- Согласовать -->
+                            <button type="submit" name="action" value="approve" class="btn btn-success btn-lg">
+                                <i class="bi bi-check-circle"></i> Согласовать
+                            </button>
+                            
+                            <!-- На доработку -->
+                            <button type="submit" name="action" value="revision" class="btn btn-warning" 
+                                    onclick="return confirmWorkflow('revision')">
+                                <i class="bi bi-arrow-counterclockwise"></i> На доработку
+                            </button>
+                            
+                            <!-- Отклонить -->
+                            <button type="submit" name="action" value="reject" class="btn btn-danger"
+                                    onclick="return confirmWorkflow('reject')">
+                                <i class="bi bi-x-circle"></i> Отклонить
+                            </button>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <a href="{% url 'my_tasks' %}" class="btn btn-outline-secondary w-100">
+                                <i class="bi bi-arrow-left"></i> Вернуться к задачам
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmWorkflow(action) {
+    var comment = document.getElementById('comment').value.trim();
+    
+    if (action === 'revision') {
+        if (!comment) {
+            alert('При отправке на доработку необходимо указать причину в комментарии!');
+            return false;
+        }
+        return confirm('Отправить заявку на доработку заявителю?');
+    }
+    
+    if (action === 'reject') {
+        if (!comment) {
+            alert('При отклонении необходимо указать причину в комментарии!');
+            return false;
+        }
+        return confirm('Отклонить заявку? Это действие нельзя отменить.');
+    }
+    
+    return true;
+}
+</script>
+{% endblock %}

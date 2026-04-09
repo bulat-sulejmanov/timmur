@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container profile-container">
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Главная</a></li>
+                    <li class="breadcrumb-item active">Мой профиль</li>
+                </ol>
+            </nav>
+            <h2 class="page-title">Профиль пользователя</h2>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Левая колонка с фото -->
+        <div class="col-md-4">
+            <div class="card profile-card text-center">
+                <div class="card-body">
+                    <div class="profile-photo-container mb-3">
+                        {% if user.photo %}
+                            <img src="{{ user.photo.url }}" alt="Фото профиля" class="profile-photo-large">
+                        {% else %}
+                            <div class="profile-photo-placeholder">
+                                <span class="placeholder-text">{{ user.first_name|first|default:user.username|first }}</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <h4 class="card-title mb-1">{{ user.get_full_name }}</h4>
+                    <p class="text-muted">{{ user.position|default:"Должность не указана" }}</p>
+                    
+                    {% if user.is_manager %}
+                    <span class="badge bg-tatneft-red">Руководитель</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="mt-3 d-grid">
+                <a href="{% url 'profile_edit' %}" class="btn btn-tatneft-outline">
+                    <i class="bi bi-pencil"></i> Редактировать профиль
+                </a>
+            </div>
+        </div>
+
+        <!-- Правая колонка с данными -->
+        <div class="col-md-8">
+            <div class="card profile-info-card">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0 text-tatneft-green">Личная информация</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row info-row">
+                        <div class="col-md-4 info-label">Фамилия:</div>
+                        <div class="col-md-8 info-value">{{ user.last_name|default:"Не указано" }}</div>
+                    </div>
+                    <hr>
+                    <div class="row info-row">
+                        <div class="col-md-4 info-label">Имя:</div>
+                        <div class="col-md-8 info-value">{{ user.first_name|default:"Не указано" }}</div>
+                    </div>
+                    <hr>
+                    <div class="row info-row">
+                        <div class="col-md-4 info-label">Отчество:</div>
+                        <div class="col-md-8 info-value">{{ user.middle_name|default:"Не указано" }}</div>
+                    </div>
+                    <hr>
+                    <div class="row info-row">
+                        <div class="col-md-4 info-label">Должность:</div>
+                        <div class="col-md-8 info-value">{{ user.position|default:"Не указано" }}</div>
+                    </div>
+                    <hr>
+                    <div class="row info-row">
+                        <div class="col-md-4 info-label">Email:</div>
+                        <div class="col-md-8 info-value">{{ user.email|default:"Не указано" }}</div>
+                    </div>
+                    <hr>
+                    <div class="row info-row">
+                        <div class="col-md-4 info-label">Телефон:</div>
+                        <div class="col-md-8 info-value">{{ user.phone|default:"Не указано" }}</div>
+                    </div>
+                    <hr>
+                    <div class="row info-row">
+                        <div class="col-md-4 info-label">Дата рождения:</div>
+                        <div class="col-md-8 info-value">
+                            {% if user.birth_date %}
+                                {{ user.birth_date|date:"d.m.Y" }}
+                            {% else %}
+                                Не указано
+                            {% endif %}
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="row info-row">
+                        <div class="col-md-4 info-label">Логин:</div>
+                        <div class="col-md-8 info-value">{{ user.username }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

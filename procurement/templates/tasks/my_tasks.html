@@ -1,0 +1,199 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Главная</a></li>
+                    <li class="breadcrumb-item active">Мои задачи</li>
+                </ol>
+            </nav>
+            <h2 class="page-title">Мои задачи</h2>
+            <span class="badge bg-warning text-dark">Активных: {{ active_count }}</span>
+            <p class="text-muted mt-2">Управление личными задачами и поручениями</p>
+        </div>
+    </div>
+
+    <!-- Список активных задач -->
+    <div class="card">
+        <div class="card-header tatneft-header-green">
+            <h5 class="mb-0 text-white"><i class="bi bi-list-task"></i> Активные задачи</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 30%;">Название задачи</th>
+                            <th style="width: 12%;">Дата</th>
+                            <th style="width: 12%;">Тип</th>
+                            <th style="width: 15%;">Связь</th>
+                            <th style="width: 14%;">Состояние</th>
+                            <th style="width: 17%;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in tasks_with_tender %}
+                        {% with task=item.task tender_id=item.tender_id %}
+                        <tr class="{% if tender_id %}tender-task-row{% endif %}" 
+                            {% if tender_id %}data-tender-id="{{ tender_id }}"{% endif %}
+                            style="cursor: pointer;">
+                            <td>
+                                <strong class="{% if tender_id %}text-tatneft-red{% else %}text-tatneft-green{% endif %}">{{ task.title }}</strong>
+                                {% if task.description %}
+                                    <br><small class="text-muted">{{ task.description|truncatechars:60|linebreaksbr }}</small>
+                                {% endif %}
+                                <br><small class="text-muted">От: {{ task.created_by.get_full_name }}</small>
+                            </td>
+                            <td>{{ task.created_at|date:"d.m.Y H:i" }}</td>
+                            <td>
+                                {% if task.task_type == 'approval' %}
+                                    <span class="badge bg-primary">Согласование заявки</span>
+                                {% elif task.task_type == 'review' %}
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="bi bi-pencil-square"></i> Доработка
+                                    </span>
+                                {% elif task.task_type == 'contract_approval' %}
+                                    <span class="badge bg-info">
+                                        <i class="bi bi-file-text"></i> Согласование договора
+                                    </span>
+                                {% else %}
+                                    {% if tender_id %}
+                                    <span class="badge bg-danger">
+                                        <i class="bi bi-trophy"></i> Конкурс
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">Общая</span>
+                                    {% endif %}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if task.related_request %}
+                                    <a href="{% url 'view_purchase_request' task.related_request.id %}" class="text-decoration-none">
+                                        Заявка №{{ task.related_request.id }}
+                                    </a>
+                                    <br>
+                                    <small class="text-muted">{{ task.related_request.nomenclature|truncatechars:20 }}</small>
+                                {% elif task.related_contract %}
+                                    <a href="{% url 'view_contract' task.related_contract.id %}" class="text-decoration-none">
+                                        Договор №{{ task.related_contract.id }}
+                                    </a>
+                                    <br>
+                                    <small class="text-muted">{{ task.related_contract.name|truncatechars:20 }}</small>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if task.state == 'active' %}
+                                    <span class="badge bg-success">Активная</span>
+                                {% elif task.state == 'pending' %}
+                                    <span class="badge bg-warning text-dark">В ожидании</span>
+                                {% elif task.state == 'in_progress' %}
+                                    <span class="badge bg-primary">В работе</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if task.task_type == 'approval' and task.related_request %}
+                                    <!-- Задача на согласование заявки -->
+                                    <a href="{% url 'approve_request' task.related_request.id %}" class="btn btn-sm btn-success">
+                                        <i class="bi bi-check-lg"></i> Согласовать
+                                    </a>
+                                    <a href="{% url 'view_purchase_request' task.related_request.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i> Просмотр
+                                    </a>
+                                
+                                {% elif task.task_type == 'review' and task.related_request %}
+                                    <!-- Задача на доработку -->
+                                    <div class="alert alert-warning py-2 mb-2">
+                                        <small><i class="bi bi-exclamation-triangle"></i> Требуется доработка</small>
+                                        {% if task.related_request.rejection_reason %}
+                                            <br><small class="text-muted">{{ task.related_request.rejection_reason|truncatechars:50 }}</small>
+                                        {% endif %}
+                                    </div>
+                                    <a href="{% url 'edit_purchase_request' task.related_request.id %}" class="btn btn-sm btn-warning w-100">
+                                        <i class="bi bi-pencil"></i> Исправить заявку
+                                    </a>
+                                
+                                {% elif task.task_type == 'contract_approval' and task.related_contract %}
+                                    <!-- Задача на согласование договора -->
+                                    <a href="{% url 'approve_contract' task.related_contract.id %}" class="btn btn-sm btn-info">
+                                        <i class="bi bi-check-lg"></i> Согласовать
+                                    </a>
+                                    <a href="{% url 'view_contract' task.related_contract.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i> Просмотр
+                                    </a>
+                                
+                                {% elif tender_id %}
+                                    <!-- Задача по конкурсу -->
+                                    <a href="{% url 'tender_proposal' tender_id %}" class="btn btn-sm btn-danger">
+                                        <i class="bi bi-send"></i> Подать предложение
+                                    </a>
+                                
+                                {% else %}
+                                    <!-- Обычная задача -->
+                                    <button class="btn btn-sm btn-outline-secondary" disabled>
+                                        В работе
+                                    </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endwith %}
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <div class="alert alert-info mb-0">
+                                    <i class="bi bi-info-circle fs-4 d-block mb-2"></i>
+                                    <strong>Нет активных задач</strong><br>
+                                    <small class="text-muted">В данный момент у вас нет активных задач.</small>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .tender-task-row {
+        background-color: rgba(227, 30, 36, 0.05);
+        transition: all 0.2s ease;
+    }
+    
+    .tender-task-row:hover {
+        background-color: rgba(227, 30, 36, 0.1) !important;
+        transform: scale(1.002);
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Обработка двойного клика по строке конкурса
+    const tenderRows = document.querySelectorAll('.tender-task-row');
+    
+    tenderRows.forEach(function(row) {
+        row.addEventListener('dblclick', function() {
+            const tenderId = this.getAttribute('data-tender-id');
+            if (tenderId) {
+                window.location.href = '/purchases/tenders/' + tenderId + '/proposal/';
+            }
+        });
+        
+        // Визуальная индикация при наведении
+        row.addEventListener('mouseenter', function() {
+            this.style.borderLeft = '4px solid var(--tatneft-red)';
+        });
+        
+        row.addEventListener('mouseleave', function() {
+            this.style.borderLeft = 'none';
+        });
+    });
+});
+</script>
+{% endblock %}

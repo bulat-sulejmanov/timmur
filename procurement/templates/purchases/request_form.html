@@ -1,0 +1,333 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Главная</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'purchase_request_list' %}">Заявки на закупку</a></li>
+                    <li class="breadcrumb-item active">
+                        {% if is_new %}Создание заявки{% else %}Заявка №{{ request_obj.id }}{% endif %}
+                    </li>
+                </ol>
+            </nav>
+            <h2 class="page-title">
+                {% if is_new %}Новая заявка на закупку{% else %}Заявка №{{ request_obj.id }}{% endif %}
+            </h2>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- КНОПКИ ДЕЙСТВИЙ (только для существующих заявок) -->
+    {% if not is_new %}
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="btn-group" role="group">
+                {% if is_requester and request_obj.is_editable_by_requester %}
+                    <a href="{% url 'edit_purchase_request' request_obj.id %}" class="btn btn-warning">
+                        <i class="bi bi-pencil"></i> Редактировать заявку
+                    </a>
+                {% endif %}
+                
+                {% if is_requester and is_draft %}
+                    <button type="button" class="btn btn-success ms-2" data-bs-toggle="modal" data-bs-target="#approverModal">
+                        <i class="bi bi-send-check"></i> Отправить на согласование
+                    </button>
+                {% endif %}
+                
+                {% if is_approver and is_pending %}
+                    <a href="{% url 'approve_request' request_obj.id %}" class="btn btn-primary ms-2">
+                        <i class="bi bi-check-circle"></i> Перейти к согласованию
+                    </a>
+                {% endif %}
+                
+                <a href="{% url 'purchase_request_list' %}" class="btn btn-outline-secondary ms-2">
+                    <i class="bi bi-arrow-left"></i> Назад к списку
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО ВЫБОРА СОГЛАСУЮЩЕГО (только для существующих заявок в статусе draft) -->
+    {% if is_requester and is_draft %}
+    <div class="modal fade" id="approverModal" tabindex="-1" aria-labelledby="approverModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="post" action="{% url 'send_for_approval' request_obj.id %}">
+                    {% csrf_token %}
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title" id="approverModalLabel">Отправка на согласование</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="mb-2"><strong>Заявка №{{ request_obj.id }}</strong></p>
+                        <p class="text-muted small mb-3">{{ request_obj.nomenclature }}</p>
+                        <div class="mb-3">
+                            <label class="form-label">Выберите согласующего:</label>
+                            <select name="approver" class="form-select" required>
+                                <option value="">-- Выберите --</option>
+                                {% for approver in available_approvers %}
+                                    {% if approver.id != user.id %}
+                                    <option value="{{ approver.id }}">
+                                        {{ approver.get_full_name }} 
+                                        {% if approver.position %}({{ approver.position }}){% endif %}
+                                    </option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-send"></i> Отправить
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <!-- СКРЫТЫЕ ПОЛЯ -->
+        {{ form.status }}
+        {{ form.unit }}
+        
+        <!-- КНОПКА ОТПРАВИТЬ В ПЛАН (только для черновиков при просмотре) -->
+        {% if not is_new and is_draft and is_requester %}
+        <div class="row mb-4">
+            <div class="col-md-12 text-end">
+                <button type="submit" name="send_to_plan" class="btn btn-outline-success" 
+                        onclick="return confirm('Отправить заявку в план?')">
+                    <i class="bi bi-check2-circle"></i> Отправить в план
+                </button>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="row">
+            <!-- Блок Основная информация -->
+            <div class="col-md-8">
+                <div class="card mb-4">
+                    <div class="card-header tatneft-header-green">
+                        <h5 class="mb-0 text-white"><i class="bi bi-file-text"></i> Основная информация</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Номенклатура -->
+                        <div class="mb-3">
+                            <label class="form-label">Номенклатура <span class="text-danger">*</span></label>
+                            {% if is_draft or is_new %}
+                                {{ form.nomenclature }}
+                            {% else %}
+                                <input type="text" class="form-control" value="{{ request_obj.nomenclature }}" readonly>
+                            {% endif %}
+                        </div>
+
+                        <div class="row">
+                            <!-- Максимальная цена -->
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Максимальная цена</label>
+                                {% if is_new %}
+                                    {{ form.max_price }}
+                                {% else %}
+                                    <input type="text" class="form-control" value="{{ request_obj.max_price|default:'-' }} ₽" readonly>
+                                {% endif %}
+                            </div>
+                            <!-- Количество -->
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Количество <span class="text-danger">*</span></label>
+                                {% if is_new %}
+                                    {{ form.quantity }}
+                                {% else %}
+                                    <input type="text" class="form-control" value="{{ request_obj.quantity }} {{ request_obj.get_unit_display }}" readonly>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <!-- Единица измерения -->
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Единица измерения</label>
+                                {% if is_new %}
+                                    {{ form.unit_display }}
+                                {% else %}
+                                    <input type="text" class="form-control" value="{{ request_obj.get_unit_display }}" readonly>
+                                {% endif %}
+                            </div>
+                            <!-- Статус -->
+                            {% if not is_new %}
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Статус</label>
+                                <input type="text" class="form-control" 
+                                       value="{{ request_obj.get_status_display }}" 
+                                       readonly 
+                                       style="font-weight: bold; color: {% if request_obj.status == 'approved' %}green{% elif request_obj.status == 'rejected' %}red{% elif request_obj.status == 'pending' %}orange{% else %}black{% endif %};">
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Причина отклонения (если есть) -->
+                        {% if not is_new and request_obj.rejection_reason %}
+                        <div class="mb-3">
+                            <div class="alert alert-warning">
+                                <strong><i class="bi bi-exclamation-triangle"></i> Причина отклонения/доработки:</strong><br>
+                                {{ request_obj.rejection_reason }}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Согласующий (если назначен) -->
+                        {% if not is_new and request_obj.approver %}
+                        <div class="mb-3">
+                            <label class="form-label">Назначенный согласующий</label>
+                            <input type="text" class="form-control" value="{{ request_obj.approver.get_full_name }}" readonly>
+                        </div>
+                        {% endif %}
+
+                        <!-- ПЛАН -->
+                        <div class="mb-3">
+                            <label class="form-label">План</label>
+                            {% if is_new %}
+                                {{ form.plan_type }}
+                            {% else %}
+                                <input type="text" class="form-control" value="{{ request_obj.get_plan_type_display }}" readonly>
+                            {% endif %}
+                        </div>
+
+                        <!-- Статья бюджета -->
+                        <div class="mb-3">
+                            <label class="form-label">Статья бюджета</label>
+                            {% if is_new %}
+                                {{ form.budget_article }}
+                            {% else %}
+                                <input type="text" class="form-control" value="{{ request_obj.get_budget_article_display }}" readonly>
+                            {% endif %}
+                        </div>
+
+                        <!-- Описание -->
+                        <div class="mb-3">
+                            <label class="form-label">Описание</label>
+                            {% if is_new %}
+                                {{ form.description }}
+                            {% else %}
+                                <textarea class="form-control" rows="4" readonly>{{ request_obj.description }}</textarea>
+                            {% endif %}
+                        </div>
+
+                        <!-- Файлы -->
+                        <div class="mb-3">
+                            <label class="form-label">Файлы</label>
+                            {% if is_new %}
+                                {{ form.attachment }}
+                            {% else %}
+                                {% if request_obj.attachment %}
+                                    <div class="mt-2">
+                                        <a href="{{ request_obj.attachment.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-file-earmark"></i> Открыть прикрепленный файл
+                                        </a>
+                                    </div>
+                                {% else %}
+                                    <input type="text" class="form-control" value="Нет файлов" readonly>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                {% if is_new %}
+                <div class="d-flex justify-content-between">
+                    <a href="{% url 'purchase_request_list' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Отмена
+                    </a>
+                    <button type="submit" class="btn btn-tatneft-primary">
+                        <i class="bi bi-save"></i> Создать заявку
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Блок Инициатор/Информация (скрываем при создании или показываем по-другому) -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header tatneft-header">
+                        <h5 class="mb-0 text-white">
+                            <i class="bi bi-info-circle"></i> 
+                            {% if is_new %}Информация{% else %}Информация{% endif %}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Заявитель</label>
+                            {% if is_new %}
+                                <input type="text" class="form-control" value="{{ user_full_name }}" readonly>
+                            {% else %}
+                                <input type="text" class="form-control" value="{{ request_obj.requester.get_full_name }}" readonly>
+                            {% endif %}
+                        </div>
+
+                        {% if not is_new %}
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Дата создания</label>
+                            <input type="text" class="form-control" 
+                                   value="{{ request_obj.created_at|date:'d.m.Y H:i' }}" readonly>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Номер заявки</label>
+                            <input type="text" class="form-control" value="{{ request_obj.id }}" readonly>
+                        </div>
+                        
+                        {% if request_obj.updated_at != request_obj.created_at %}
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Дата обновления</label>
+                            <input type="text" class="form-control" 
+                                   value="{{ request_obj.updated_at|date:'d.m.Y H:i' }}" readonly>
+                        </div>
+                        {% endif %}
+                        {% endif %}
+
+                        {% if not is_new %}
+                            {% if request_obj.status == 'pending' %}
+                            <div class="alert alert-info mt-3">
+                                <i class="bi bi-clock"></i>
+                                <small>Заявка ожидает согласования.</small>
+                            </div>
+                            {% elif request_obj.status == 'approved' %}
+                            <div class="alert alert-success mt-3">
+                                <i class="bi bi-check-circle"></i>
+                                <small>Заявка согласована.</small>
+                            </div>
+                            {% elif request_obj.status == 'rejected' %}
+                            <div class="alert alert-danger mt-3">
+                                <i class="bi bi-x-circle"></i>
+                                <small>Заявка отклонена.</small>
+                            </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="alert alert-info mt-3">
+                                <i class="bi bi-info-circle"></i>
+                                <small>Заполните форму и нажмите "Создать заявку". После создания можно будет отправить на согласование.</small>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

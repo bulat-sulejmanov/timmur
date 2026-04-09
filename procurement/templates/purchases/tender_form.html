@@ -1,0 +1,360 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Главная</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'tender_list' %}">Конкурсы</a></li>
+                    <li class="breadcrumb-item active">
+                        {% if is_edit %}Редактирование конкурса{% else %}Создание конкурса{% endif %}
+                    </li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="page-title">
+                    {% if is_edit %}Редактирование конкурса{% else %}Создание конкурса{% endif %}
+                </h2>
+                <span class="badge bg-secondary">
+                    {% if is_edit %}Статус: {{ tender.get_status_display }}{% else %}Статус: Подготовка{% endif %}
+                </span>
+            </div>
+            <p class="text-muted">
+                {% if is_edit %}Измените информацию о конкурсной процедуре{% else %}Заполните информацию о конкурсной процедуре{% endif %}
+            </p>
+        </div>
+    </div>
+
+    {% if form.errors or item_formset.errors %}
+    <div class="alert alert-danger">
+        <strong>Ошибки в форме:</strong>
+        <ul>
+            {% for field in form %}
+                {% if field.errors %}
+                    <li>{{ field.label }}: {{ field.errors.0 }}</li>
+                {% endif %}
+            {% endfor %}
+            {% for error in form.non_field_errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" id="tenderForm">
+        {% csrf_token %}
+        
+        <!-- Блок Информация о закупке -->
+        <div class="card mb-4">
+            <div class="card-header tatneft-header-green">
+                <h5 class="mb-0 text-white"><i class="bi bi-info-circle"></i> Информация о закупке</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label">{{ form.name.label }} <span class="text-danger">*</span></label>
+                        {{ form.name }}
+                        {% if form.name.errors %}
+                            <div class="text-danger small">{{ form.name.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ form.contact_person.label }}</label>
+                        {{ form.contact_person }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ form.place_of_delivery.label }}</label>
+                        {{ form.place_of_delivery }}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ form.min_step.label }}</label>
+                        {{ form.min_step }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ form.is_trading.label }}</label>
+                        {{ form.is_trading }}
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label">{{ form.description.label }}</label>
+                        {{ form.description }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Блок Сроки -->
+        <div class="card mb-4">
+            <div class="card-header tatneft-header-green">
+                <h5 class="mb-0 text-white"><i class="bi bi-calendar-event"></i> Сроки</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">{{ form.start_date.label }} <span class="text-danger">*</span></label>
+                        {{ form.start_date }}
+                        <div class="form-text">Дата и время начала конкурса</div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">{{ form.submission_deadline.label }} <span class="text-danger">*</span></label>
+                        {{ form.submission_deadline }}
+                        <div class="form-text">Крайний срок подачи предложений</div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Срок поставки</label>
+                        {{ form.delivery_term }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Блок Документы -->
+        <div class="card mb-4">
+            <div class="card-header tatneft-header-green">
+                <h5 class="mb-0 text-white"><i class="bi bi-file-earmark-text"></i> Документы</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ form.procurement_docs.label }}</label>
+                        {{ form.procurement_docs }}
+                        {% if tender and tender.procurement_docs %}
+                            <div class="mt-2">
+                                <small class="text-muted">Текущий файл: <a href="{{ tender.procurement_docs.url }}" target="_blank">{{ tender.procurement_docs.name }}</a></small>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="procurement_docs-clear" id="procurement_docs-clear">
+                                    <label class="form-check-label" for="procurement_docs-clear">Удалить файл</label>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">{{ form.price_request_doc.label }}</label>
+                        {{ form.price_request_doc }}
+                        {% if tender and tender.price_request_doc %}
+                            <div class="mt-2">
+                                <small class="text-muted">Текущий файл: <a href="{{ tender.price_request_doc.url }}" target="_blank">{{ tender.price_request_doc.name }}</a></small>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="price_request_doc-clear" id="price_request_doc-clear">
+                                    <label class="form-check-label" for="price_request_doc-clear">Удалить файл</label>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Блок Позиции конкурса -->
+        <div class="card mb-4">
+            <div class="card-header tatneft-header-green d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-white"><i class="bi bi-list-ol"></i> Позиции конкурса</h5>
+                <button type="button" class="btn btn-light btn-sm" id="addItemBtn">
+                    <i class="bi bi-plus-lg"></i> Добавить позицию
+                </button>
+            </div>
+            <div class="card-body">
+                {{ item_formset.management_form }}
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="itemsTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 5%;">№</th>
+                                <th style="width: 35%;">Товар (из заявок)</th>
+                                <th style="width: 15%;">Количество</th>
+                                <th style="width: 15%;">Начальная цена</th>
+                                <th style="width: 20%;">Приложение</th>
+                                <th style="width: 10%;">Действие</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for form in item_formset.forms %}
+                            <tr class="item-row">
+                                <td class="align-middle text-center row-number">{{ forloop.counter }}</td>
+                                <td>
+                                    {% if form.instance.id %}
+                                        <input type="hidden" name="{{ form.id.html_name }}" value="{{ form.instance.id }}">
+                                    {% endif %}
+                                    <select name="{{ form.purchase_request.html_name }}" class="form-select">
+                                        <option value="">---------</option>
+                                        {% for choice in form.purchase_request.field.choices %}
+                                            {% if choice.0 %}
+                                                <option value="{{ choice.0 }}" {% if form.purchase_request.value == choice.0 %}selected{% endif %}>
+                                                    {{ choice.1 }}
+                                                </option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                    {% if form.purchase_request.errors %}
+                                        <div class="text-danger small">{{ form.purchase_request.errors.0 }}</div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <input type="number" name="{{ form.quantity.html_name }}" class="form-control" step="0.01" 
+                                           value="{{ form.quantity.value|default_if_none:'' }}" placeholder="0.00">
+                                    {% if form.quantity.errors %}
+                                        <div class="text-danger small">{{ form.quantity.errors.0 }}</div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <input type="number" name="{{ form.start_price.html_name }}" class="form-control" step="0.01" 
+                                           value="{{ form.start_price.value|default_if_none:'' }}" placeholder="0.00">
+                                    {% if form.start_price.errors %}
+                                        <div class="text-danger small">{{ form.start_price.errors.0 }}</div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <input type="file" name="{{ form.attachment.html_name }}" class="form-control">
+                                    {% if form.instance.attachment %}
+                                        <div class="mt-1">
+                                            <small class="text-muted">Текущий: <a href="{{ form.instance.attachment.url }}" target="_blank">файл</a></small>
+                                        </div>
+                                    {% endif %}
+                                    {% if form.attachment.errors %}
+                                        <div class="text-danger small">{{ form.attachment.errors.0 }}</div>
+                                    {% endif %}
+                                </td>
+                                <td class="align-middle text-center">
+                                    {% if form.instance.id %}
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="{{ form.DELETE.html_name }}" id="{{ form.DELETE.auto_id }}">
+                                            <label class="form-check-label" for="{{ form.DELETE.auto_id }}">Удалить</label>
+                                        </div>
+                                    {% else %}
+                                    <button type="button" class="btn btn-outline-danger btn-sm remove-row" title="Удалить">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Кнопки действий -->
+        <div class="d-flex justify-content-between mb-5">
+            <a href="{% url 'tender_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Отмена
+            </a>
+            <button type="submit" class="btn btn-tatneft-primary btn-lg">
+                <i class="bi bi-save"></i> 
+                {% if is_edit %}Сохранить изменения{% else %}Запустить конкурс{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const addItemBtn = document.getElementById('addItemBtn');
+    const itemsTable = document.getElementById('itemsTable').querySelector('tbody');
+    
+    // Шаблон для новой позиции
+    let itemFormCount = {{ item_formset.total_form_count }};
+    
+    addItemBtn.addEventListener('click', function() {
+        const newRow = document.createElement('tr');
+        newRow.className = 'item-row';
+        newRow.innerHTML = `
+            <td class="align-middle text-center row-number">-</td>
+            <td>
+                <select name="items-${itemFormCount}-purchase_request" class="form-select" required>
+                    <option value="">---------</option>
+                    {% for req in approved_requests %}
+                        {% if req.nomenclature %}
+                        <option value="{{ req.id }}">{{ req.nomenclature.name }} (Заявка №{{ req.id }})</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </td>
+            <td><input type="number" name="items-${itemFormCount}-quantity" class="form-control" step="0.01" placeholder="0.00" required></td>
+            <td><input type="number" name="items-${itemFormCount}-start_price" class="form-control" step="0.01" placeholder="0.00" required></td>
+            <td><input type="file" name="items-${itemFormCount}-attachment" class="form-control"></td>
+            <td class="align-middle text-center">
+                <button type="button" class="btn btn-outline-danger btn-sm remove-row" title="Удалить">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        `;
+        itemsTable.appendChild(newRow);
+        itemFormCount++;
+        updateManagementForm('items', itemFormCount);
+        updateRowNumbers();
+    });
+    
+    // Удаление строк
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.remove-row')) {
+            const row = e.target.closest('tr');
+            row.remove();
+            updateRowNumbers();
+        }
+    });
+    
+    // Обновление management form
+    function updateManagementForm(prefix, count) {
+        const totalFormsInput = document.querySelector(`[name="${prefix}-TOTAL_FORMS"]`);
+        if (totalFormsInput) {
+            totalFormsInput.value = count;
+        }
+    }
+    
+    // Обновление нумерации строк
+    function updateRowNumbers() {
+        const rows = itemsTable.querySelectorAll('.item-row');
+        rows.forEach((row, index) => {
+            const numCell = row.querySelector('.row-number');
+            if (numCell) {
+                numCell.textContent = index + 1;
+            }
+        });
+    }
+    
+    // Валидация перед отправкой
+    document.getElementById('tenderForm').addEventListener('submit', function(e) {
+        // Проверяем, что хотя бы одна позиция есть
+        const itemRows = itemsTable.querySelectorAll('.item-row');
+        if (itemRows.length === 0) {
+            e.preventDefault();
+            alert('Добавьте хотя бы одну позицию конкурса');
+            return false;
+        }
+        
+        // Проверяем, что все селекты товаров заполнены
+        let hasEmptyItems = false;
+        itemRows.forEach(row => {
+            const select = row.querySelector('select[name*="purchase_request"]');
+            if (!select || !select.value) {
+                hasEmptyItems = true;
+                select.classList.add('is-invalid');
+            } else {
+                select.classList.remove('is-invalid');
+            }
+        });
+        
+        if (hasEmptyItems) {
+            e.preventDefault();
+            alert('Выберите товар для всех позиций');
+            return false;
+        }
+    });
+    
+    // Инициализация нумерации
+    updateRowNumbers();
+});
+</script>
+{% endblock %}
