@@ -42,6 +42,7 @@ class Command(BaseCommand):
     @transaction.atomic
     def handle(self, *args, **kwargs):
         password = os.environ.get('TEST_USERS_PASSWORD', 'Test12345!')
+        sync_password = os.environ.get('SYNC_TEST_USERS_PASSWORD', 'True').lower() in ('1', 'true', 'yes', 'on')
 
         users_to_create = [
             {
@@ -137,6 +138,10 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.SUCCESS(f'Создан пользователь: {user.username}'))
             else:
                 self.stdout.write(self.style.WARNING(f'Пользователь уже существует: {user.username}'))
+                if sync_password:
+                    user.set_password(password)
+                    user.save(update_fields=['password'])
+                    self.stdout.write(self.style.SUCCESS(f'Пароль синхронизирован: {user.username}'))
 
         materials_data = [
             ('[TEST] Бентонитовый раствор', 'м³', 'Тестовый материал для демо-заявок'),
@@ -237,4 +242,6 @@ class Command(BaseCommand):
         self.stdout.write(
             f"Договор: {'создан' if contract_created else 'уже существует'}"
         )
-        self.stdout.write('Тестовый пароль для новых аккаунтов: TEST_USERS_PASSWORD (по умолчанию Test12345!)')
+        if sync_password:
+            self.stdout.write('Пароль тестовых аккаунтов синхронизируется на каждом запуске.')
+        self.stdout.write('Пароль берется из TEST_USERS_PASSWORD (по умолчанию Test12345!).')
